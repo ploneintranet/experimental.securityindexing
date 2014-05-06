@@ -7,12 +7,17 @@
 *.egg-info
 *.EGG-INFO
 .*.cfg
+.emacs.*
+*~
 bin/
 build/
 develop-eggs/
 downloads/
 eggs/
 fake-eggs/
+lib/
+local/
+include/
 parts/
 dist/
 var/
