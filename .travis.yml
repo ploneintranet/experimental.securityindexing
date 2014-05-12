@@ -8,7 +8,7 @@ script:
   - bin/test
   - bin/flake8 src/experimental
 after_success:
-  - bin/createcoverage run --src=src/experimental bin/test -s experimenal.securityindexing
+  - bin/createcoverage run --src=src/experimental bin/test -s experimental.securityindexing
   - pip install -q coveralls
   - coveralls
 notifications:
