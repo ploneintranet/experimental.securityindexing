@@ -7,7 +7,7 @@ import mock
 import zope.component
 import zope.interface
 
-from ..interfaces import IDecendantLocalRolesAware
+# from ..interfaces import IDecendantLocalRolesAware
 from . import testing
 
 
@@ -203,7 +203,7 @@ class TestSecutityIndexer(unittest.TestCase):
 
 def test_suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(TestLocalRolesIndex))
+    suite.addTest(unittest.makeSuite(TestSecutityIndexer))
     return suite
 
 

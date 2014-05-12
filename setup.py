@@ -35,15 +35,14 @@ setup(name='experimental.securityindexing',
       package_dir={'': 'src'},
       install_requires=[
           'setuptools',
-          'collective.loremipsum',
-          'zope.component',
-          'zope.interface',
           'plone.api',
-          'ZODB3',
-          'BTrees',
       ],
       extras_require={
           'test': [
+              'plone.app.contenttypes',
+              'plone.app.event',
+              'plone.app.robotframework',
+              'plone.app.testing',
               'mock'
           ]
       },
