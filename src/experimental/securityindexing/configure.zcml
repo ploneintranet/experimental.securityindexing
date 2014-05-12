@@ -7,12 +7,12 @@
 
   <includeDependencies package="." />
 
-  <adapter
-    for="Products.CMFCore.interfaces.IContentish
-         Products.CMFCore.interfaces.ICatalogAware"
-    provides="Products.CMFCore.interfaces.ICatalogAware"
-    name="allowedUsersAndRoles"
-    />
+  <!-- <adapter -->
+  <!--   for="Products.CMFCore.interfaces.IContentish -->
+  <!--        Products.CMFCore.interfaces.ICatalogAware" -->
+  <!--   provides="Products.CMFCore.interfaces.ICatalogAware" -->
+  <!--   name="allowedUsersAndRoles" -->
+  <!--   /> -->
 
   <genericsetup:registerProfile
     name="default"
