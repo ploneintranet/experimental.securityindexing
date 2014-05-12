@@ -1,3 +1,10 @@
+.. image:: https://api.travis-ci.org/netsight/experimental.securityindexing.png
+  :target: https://travis-ci.org/netsight/experimental.securityindexing
+
+.. image:: https://coveralls.io/repos/netsight/experimental.securityindexing/badge.png
+  :target: https://coveralls.io/r/netsight/experimental.securityindexing
+
+
 =============================
 experimental.securityindexing
 =============================
