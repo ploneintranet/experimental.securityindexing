@@ -7,9 +7,10 @@ import mock
 import zope.component
 import zope.interface
 
-# from ..interfaces import IDecendantLocalRolesAware
-from . import testing
 
+from .. import testing
+
+# from ..interfaces import IDecendantLocalRolesAware
 
 class TestSecutityIndexer(unittest.TestCase):
     """Tests for SecutityIndexer Adapter."""
@@ -139,7 +140,7 @@ class TestSecutityIndexer(unittest.TestCase):
         self.assertEqual(list(result), [2, 3, 4, 5])
         self._effect_change(
             4,
-            Dummy('/a/b/c/d', ['Anonymous', 'Authenticated', 'Editor'])
+            _Dummy('/a/b/c/d', ['Anonymous', 'Authenticated', 'Editor'])
         )
         self._check_index(['Anonymous', 'Authenticated'],
                           [2, 3, 4, 5],
@@ -147,7 +148,7 @@ class TestSecutityIndexer(unittest.TestCase):
         self._check_index(['Editor'], [4], operator='and')
         self._effect_change(
             2,
-            Dummy('/a/b/c', ['Contributor'])
+            _Dummy('/a/b/c', ['Contributor'])
         )
         self._check_index(['Contributor'], {2})
         self._check_index(['Anonymous', 'Authenticated'], {3, 4, 5},
@@ -173,7 +174,7 @@ class TestSecutityIndexer(unittest.TestCase):
         self._check_index(['Reviewer'], {7})
 
     def test_index_object_when_raising_attributeerror(self):
-        class FauxObject(Dummy):
+        class FauxObject(_Dummy):
             def allowedRolesAndUsers(self):
                 raise AttributeError
         to_index = FauxObject('/a/b', ['Role'])
@@ -182,7 +183,7 @@ class TestSecutityIndexer(unittest.TestCase):
         self.assertFalse(self._index.getEntryForObject(10))
 
     def test_index_object_when_raising_typeeror(self):
-        class FauxObject(Dummy):
+        class FauxObject(_Dummy):
             def allowedRolesAndUsers(self, name):
                 return 'allowedRolesAndUsers'
 
@@ -192,11 +193,11 @@ class TestSecutityIndexer(unittest.TestCase):
         self.assertFalse(self._index.getEntryForObject(10))
 
     def test_value_removes(self):
-        to_index = Dummy('/a/b/c', ['hello'])
+        to_index = _Dummy('/a/b/c', ['hello'])
         self._index.index_object(10, to_index)
         self.assertIn(10, self._index._unindex)
 
-        to_index = Dummy('/a/b/c', [])
+        to_index = _Dummy('/a/b/c', [])
         self._index.index_object(10, to_index)
         self.assertNotIn(10, self._index._unindex)
 
