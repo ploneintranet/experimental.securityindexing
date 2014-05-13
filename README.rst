@@ -116,7 +116,7 @@ Products.CMFCore.CMFCatalogAware.CatalogAware.reindexObjectSecuity
 ------------------------------------------------------------------
 Modify this method to:
 
-  1. Query an adapter (Plone.app.dexterity behaviour) which provides experimental.securityindexing.ISecurityIndexer
+  1. Query an adapter (Plone.app.dexterity behaviour) which provides experimental.securityindexing.IARUIndexer
   2. If an adapter was found, the invoke the `index_object` API
   3. Otherwise invoke the default implementation (as described above in RIS-1)
   
@@ -125,7 +125,7 @@ Products.Archetypes.CatalogMultiplex.CatalogMultiplex
 ------------------------------------------------------
 
   1. For each catalog provided by the AT tool for the content object's meta type,
-    1.1 Query an adapter which provides experimental.securityindexing.ISecurityIndexer
+    1.1 Query an adapter which provides experimental.securityindexing.IARUIndexer
     1.2 If an adapter was found, the invoke the `index_object` API
     1.3 Otherwise invoke the default implementation (as described above in RIS-1)
      
@@ -159,7 +159,7 @@ Results:
 
 .. code-block:: python
 
-    class ISecurityIndexer(zope.interface.Interface):
+    class IARUIndexer(zope.interface.Interface):
         
         def index_object(obj):
             """Index the security information pertaining to object."""
@@ -167,7 +167,7 @@ Results:
 
 .. code-block:: python
 
-    @zope.interface.implementer(ICatalogAware, ISecurityIndexer) # ICatalogAware covers DX and AT
+    @zope.interface.implementer(ICatalogAware, IARUIndexer) # ICatalogAware covers DX and AT
     @zope.component.adapter(IPortalContent, ICatalogTool) # adapt any content object (DX and AT) and catalog tool
     class ARUIndexer(object):
 
