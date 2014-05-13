@@ -1,9 +1,6 @@
 import unittest
 
 
-from .. import testing
-
-
 class _Dummy(object):
 
     def __init__(self, path, local_roles, local_roles_block=False):
@@ -68,10 +65,8 @@ class TestShadowTreeNode(unittest.TestCase):
         self.assertIsNone(node.token)
         self.assertIsNone(node.physical_path)
         self.assertFalse(node.block_inherit_roles)
-        self.assertIsNone(node.document_id)
-        node.update_security_info(1, _Dummy('/foobar', ['Editor'],
-                                           local_roles_block=True))
-        self.assertEqual(node.document_id, 1)
+        node.update_security_info(_Dummy('/foobar', ['Editor'],
+                                         local_roles_block=True))
         self.assertEqual(node.id, 'foobar')
         self.assertIs(node.__parent__, root)
         self.assertIsInstance(node.token, int)
@@ -99,20 +94,17 @@ class TestShadowTreeNode(unittest.TestCase):
 
         b = leaf.__parent__
         self.assertEqual(b.id, 'b')
-        self.assertIsNone(b.document_id)
         self.assertIsNone(b.physical_path)
         self.assertIsNone(b.token)
         self.assertFalse(b.block_inherit_roles)
 
         a = b.__parent__
         self.assertEqual(a.id, 'a')
-        self.assertIsNone(a.document_id)
         self.assertIsNone(a.physical_path)
         self.assertIsNone(a.token)
         self.assertFalse(a.block_inherit_roles)
 
         self.assertEqual(leaf.__parent__.id, 'b')
-        self.assertIsNone(leaf.document_id)
         self.assertIsNone(leaf.physical_path)
         self.assertIsNone(leaf.token)
         self.assertFalse(leaf.block_inherit_roles)
@@ -170,4 +162,3 @@ class TestShadowTreeNode(unittest.TestCase):
         descendant_ids = list(node.id for node in descendants)
         expected_order = ['a', 'b', 'c1', 'd1', 'e1', 'c2', 'd2', 'e2', 'f2']
         self.assertEqual(descendant_ids, expected_order)
-

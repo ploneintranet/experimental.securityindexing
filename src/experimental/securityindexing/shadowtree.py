@@ -28,8 +28,6 @@ class Node(Persistent):
     block_inherit_roles = False
     token = None
     physical_path = None
-    document_id = None
-
     family = BTrees.family64
 
     def __init__(self, id='', parent=None):
@@ -107,15 +105,12 @@ class Node(Persistent):
     def get_local_roles_block(obj):
         return getattr(obj, '__ac_local_roles_block__', False)
 
-    def update_security_info(self, document_id, obj):
+    def update_security_info(self, obj):
         """Update the security information for an object.
 
-        :param document_id: The document id as stored by a catalog index.
-        :type document_id: int
         :param obj: The portal content object.
         :type obj: Products.CMFCore.PortalContent
         """
-        self.document_id = document_id
         self.physical_path = obj.getPhysicalPath()
         self.block_inherit_roles = self.get_local_roles_block(obj)
         self.token = self.create_security_token(obj)
