@@ -1,10 +1,12 @@
-import zope.component
-import zope.interface
-from Products.CMFCore.interfaces import ICatalogAware, IContentish
+# import zope.component
+# import zope.interface
+# from Products.CMFCore.interfaces import ICatalogAware, IContentish
 
 
-@zope.interface.implementer(ICatalogAware)
-@zope.component.adapter(IContentish, ICatalogAware)
+# @zope.interface.implementer(ICatalogAware)
+# @zope.component.adapter(IContentish, ICatalogAware)
+
+
 class ARUIndexer(object):
 
     def __init__(self, context, catalog_tool):
@@ -15,4 +17,5 @@ class ARUIndexer(object):
         return getattr(self.context, name)
 
     def reindexObjectSecurity(self, obj, skip_self=False):
+        # self.catalog_tool.catalog_object(obj, idxs=('allowedRolesAndUsers',),)
         raise NotImplementedError('TODO')

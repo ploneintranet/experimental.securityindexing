@@ -15,7 +15,9 @@ import pkg_resources
 
 from .testing import (
     DX_VANILLA_INTEGRATION, 
-    DX_INSTALLED_INTEGRATION
+    DX_INSTALLED_INTEGRATION,
+    AT_VANILLA_INTEGRATION, 
+    AT_INSTALLED_INTEGRATION
 )
 
 
@@ -68,11 +70,11 @@ class BenchTestMixin(object):
         method = timed(obj.reindexObjectSecurity)
         return method(*args, **kw)
 
-    def _get_obj(self, path):
+    def _get_obj(self, path=''):
         return api.content.get('/plone/bench-root' + path)
 
-    def test_reindexObjectSecurity(self):
-        subject = api.content.get(path='/Plone/a/b')
+    def test_reindexObjectSecurity_from_root(self):
+        subject = self._get_obj()
         duration = self._call_mut(subject)
         self._write_result(duration)
 
@@ -81,18 +83,20 @@ class VanillaDXBenchTest(BenchTestMixin, unittest.TestCase):
 
     layer = DX_VANILLA_INTEGRATION
     
-    def setUp(self):
-        super(VanillaDXBenchTest, self).setUp()
 
-    def test_reindexObjectSecurity(self):
-        subject = self._get_obj('/a/b')
-        duration = self._call_mut(subject)
-        self._write_result(duration)
-        
-
-class InstalledDexterityBenchTest(VanillaDXBenchTest):
+class InstalledDXBenchTest(VanillaDXBenchTest):
 
     layer = DX_INSTALLED_INTEGRATION
+
+
+class VanillaATBenchTest(BenchTestMixin, unittest.TestCase):
+
+    layer = AT_VANILLA_INTEGRATION
+           
+
+class InstalledATBenchTest(VanillaATBenchTest):
+
+    layer = AT_INSTALLED_INTEGRATION
 
 
 if __name__ == '__main__':
