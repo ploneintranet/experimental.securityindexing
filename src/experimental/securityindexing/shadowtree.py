@@ -6,6 +6,17 @@ an index to make decisions when indexing.
 """
 import BTrees
 from persistent import Persistent
+from plone import api
+from zope.annotation.interfaces import IAnnotations
+
+
+def get_root():
+    storage = IAnnotations(api.portal.get())
+    root = storage.get(__package__)
+    if root is None:
+        root = Node()
+        storage[__package__] = root
+    return root
 
 
 class Node(Persistent):

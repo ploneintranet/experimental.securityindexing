@@ -3,7 +3,6 @@ import contextlib
 import functools
 import string
 import time
-import unittest
 
 from plone import api
 from plone.app.contenttypes.testing import (
@@ -35,7 +34,7 @@ def catalog_disabled():
     CMFCatalogAware._getCatalogTool = catalog_tool
 
 
-def create_content_tree(parent, nwide, ndeep, 
+def create_content_tree(parent, nwide, ndeep,
                         level=0, verbose=False):
     """Recursively create a tree of content.
 
@@ -63,21 +62,21 @@ def create_content_tree(parent, nwide, ndeep,
         siblings.append(folder)
         count += 1
     if verbose:
-        print('/'.join(f.getPhysicalPath()[:-1]))
+        print('/'.join(folder.getPhysicalPath()[:-1]))
         print(' ' * level, ', '.join(s.getId() for s in siblings))
     level += 1
     for sibling in siblings:
-        count += create_content_tree(sibling, nwide, ndeep, 
+        count += create_content_tree(sibling, nwide, ndeep,
                                      level=level, verbose=verbose)
     return count
-        
+
 
 class SecurityIndexingLayerMixin(object):
     """Mixin for layers."""
 
     def setUpZope(self, app, configuration_context):
         super(SecurityIndexingLayerMixin, self).setUpZope(
-            app, 
+            app,
             configuration_context
         )
         # Load ZCML
@@ -90,21 +89,18 @@ class SecurityIndexingLayerMixin(object):
         self.applyProfile(portal, 'experimental.securityindexing:default')
 
 
-
-class DXIntegrationLayer(SecurityIndexingLayerMixin, 
+class DXIntegrationLayer(SecurityIndexingLayerMixin,
                          pa_testing.PloneSandboxLayer):
     """A layer for Dexterity integration testing."""
 
-    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE, 
-                    PAEvent_FIXTURE, 
+    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE,
+                    PAEvent_FIXTURE,
                     pa_testing.PLONE_FIXTURE)
-
 
 
 class ATIntegrationLayer(SecurityIndexingLayerMixin,
                          pa_testing.PloneSandboxLayer):
     """A layer for Archetypes integration testing."""
-
 
 
 AT_FIXTURE = ATIntegrationLayer()
