@@ -12,10 +12,8 @@ from .. import testing
 
 # from ..interfaces import IDecendantLocalRolesAware
 
-class TestSecutityIndexer(unittest.TestCase):
-    """Tests for SecutityIndexer Adapter."""
-
-    layer = testing.FIXTURE
+class ARUIndexerTestsMixin(object):
+    """Tests for ARUIndexer Adapter."""
 
     def __getattr__(self, name):
         try:
@@ -27,7 +25,7 @@ class TestSecutityIndexer(unittest.TestCase):
         id = path.split('/')[-1]
         parent_path = path.split('/')[:-1]
         if parent_path:
-            parent = api.content.get(path=parent_path)
+            parent = api.content.get(path='/'.join(parent_path))
         else:
             parent = self.portal
         folder = api.content.create(container=parent,
@@ -48,8 +46,8 @@ class TestSecutityIndexer(unittest.TestCase):
         create_folder('/a/b/c/e/f/g', ['Reviewer'])
 
     def _get_target_class(self):
-        from .adapters import SecutityIndexer
-        return SecutityIndexer
+        from .adapters import ARUIndexer
+        return ARUIndexer
 
     def _make_one(self, *args, **kw):
         cls = self._get_target_class()
@@ -96,12 +94,12 @@ class TestSecutityIndexer(unittest.TestCase):
         verifyClass(IUniqueValueIndex, LocalRolesIndex)
 
     def test_index_populated(self):
-        self._populate_index()
+        self._populate()
         values = self._values
         self.assertEqual(len(self._index.referencedObjects()), len(values))
 
     def test_index_clear(self):
-        self._populate_index()
+        self._populate()
         values = self._values
         self.assertEqual(len(self._index.referencedObjects()), len(values))
         self._index.clear()
@@ -109,7 +107,7 @@ class TestSecutityIndexer(unittest.TestCase):
         self.assertEqual(list(self._index.shadowtree.descendants()), [])
 
     def test_index_object_noop(self):
-        self._populate_index()
+        self._populate()
         try:
             self._index.index_object(999, None)
         except Exception:
@@ -128,13 +126,13 @@ class TestSecutityIndexer(unittest.TestCase):
         assert len(self._index.uniqueValues('allowedRolesAndUsers')) == 0
 
     def test_index_object(self):
-        self._populate_index()
+        self._populate()
         self._check_index(['Anonymous'], (0, 1, 2, 3, 4, 5))
         self._check_index(['Authenticated'], (2, 3, 4, 5, 6))
         self._check_index(['Member'], ())
 
     def test__index_object_on_change_no_recurse(self):
-        self._populate_index()
+        self._populate()
         result = self._query_index(['Anonymous', 'Authenticated'],
                                    operator='and')
         self.assertEqual(list(result), [2, 3, 4, 5])
@@ -155,7 +153,7 @@ class TestSecutityIndexer(unittest.TestCase):
                           operator='and')
 
     def test__index_object_on_change_recurse(self):
-        self._populate_index()
+        self._populate()
         self._values[2].aru = ['Contributor']
         dummy = self._values[2]
         zope.interface.alsoProvides(dummy, IDecendantLocalRolesAware)
@@ -166,7 +164,7 @@ class TestSecutityIndexer(unittest.TestCase):
                           dummy=dummy)
 
     def test_reindex_no_change(self):
-        self._populate_index()
+        self._populate()
         obj = self._values[7]
         self._effect_change(7, obj)
         self._check_index(['Reviewer'], {7})
@@ -202,10 +200,14 @@ class TestSecutityIndexer(unittest.TestCase):
         self.assertNotIn(10, self._index._unindex)
 
 
-def test_suite():
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(TestSecutityIndexer))
-    return suite
+class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
+
+    layer = testing.DX_INSTALLED_INTEGRATION
+
+
+class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
+
+    layer = testing.AT_INSTALLED_INTEGRATION
 
 
 if __name__ == '__main__':
