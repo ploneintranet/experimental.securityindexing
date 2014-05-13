@@ -90,84 +90,33 @@ class SecurityIndexingLayerMixin(object):
         self.applyProfile(portal, 'experimental.securityindexing:default')
 
 
-class BenchmarkLayer(pa_testing.PloneSandboxLayer):
-    """Base class for benchmark layers.
 
-    Ensures that a tree of content is created after installation
-    of packages is performed.
-    """
-    n_wide = 2
-    n_deep = 2
-
-    def _sanity_checks(self):
-        raise NotImplementedError()
-       
-    def setUpPloneSite(self, portal):
-        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
-        pa_testing.login(portal, pa_testing.TEST_USER_NAME)
-        super(BenchmarkLayer, self).setUpPloneSite(portal)
-        self.top = api.content.create(api.portal.get(), id='bench-root', type='Folder')
-        with catalog_disabled():
-            create_content_tree(self.top, self.n_wide, self.n_deep)
-        catalog = api.portal.get_tool('portal_catalog')
-        catalog.clearFindAndRebuild()
-        self._sanity_checks()
-
-      
-class VanillaDXBenchLayer(BenchmarkLayer):
-    """A layer which ensure Dexteity is used for the default content types."""
+class DXIntegrationLayer(SecurityIndexingLayerMixin, 
+                         pa_testing.PloneSandboxLayer):
+    """A layer for Dexterity integration testing."""
 
     defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE, 
                     PAEvent_FIXTURE, 
                     pa_testing.PLONE_FIXTURE)
 
-    def _sanity_checks(self):
-        assert self.top.meta_type.startswith('Dexterity')
 
 
-class InstalledDXBenchLayer(SecurityIndexingLayerMixin, VanillaDXBenchLayer):
-    """A benchmark layer that installs plone.app.contenttypes,
-    and this addon package.
-    """
+class ATIntegrationLayer(SecurityIndexingLayerMixin,
+                         pa_testing.PloneSandboxLayer):
+    """A layer for Archetypes integration testing."""
 
 
-class VanillaATBenchLayer(BenchmarkLayer):
-    """A Plone 4.3.x layer for benchmarking.
 
-    This layer installs no additional addons.
-    """
-
-    def _sanity_checks(self):
-        assert self.top.meta_type.startswith('ATFolder')
-
-
-class InstalledATBenchLayer(SecurityIndexingLayerMixin, VanillaATBenchLayer):
-    """A benchmark layer this addon package installed."""
-
-
-DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
-DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_VANILLA_FIXTURE,),
-    name='VanillaDXLayer:Integration'
+AT_FIXTURE = ATIntegrationLayer()
+AT_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_FIXTURE,),
+    name='ATIntegrationLayer:Integration'
 )
 
-DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
-DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_INSTALLED_FIXTURE,),
-    name='InstalledDXLayer:Integration'
+DX_FIXTURE = DXIntegrationLayer()
+DX_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_FIXTURE,),
+    name='DXIntegrationLayer:Integration'
 )
-
-AT_VANILLA_FIXTURE = VanillaATBenchLayer()
-AT_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_VANILLA_FIXTURE,),
-    name='VanillaATLayer:Integration'
-)
-
-AT_INSTALLED_FIXTURE = InstalledATBenchLayer()
-AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_INSTALLED_FIXTURE,),
-    name='InstalledATLayer:Integration'
-)
-
 
 

@@ -7,9 +7,96 @@ import unittest
 
 import pkg_resources
 from plone import api
+from plone.app.contenttypes.testing import (
+    PLONE_APP_CONTENTTYPES_FIXTURE,
+)
+from plone.app.event.testing import PAEvent_FIXTURE
 import plone.app.testing as pa_testing
 
 from . import testing
+
+
+class BenchmarkLayer(pa_testing.PloneSandboxLayer):
+    """Base class for benchmark layers.
+
+    Ensures that a tree of content is created after installation
+    of packages is performed.
+    """
+    n_wide = 2
+    n_deep = 2
+
+    def _sanity_checks(self):
+        raise NotImplementedError()
+       
+    def setUpPloneSite(self, portal):
+        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
+        pa_testing.login(portal, pa_testing.TEST_USER_NAME)
+        super(BenchmarkLayer, self).setUpPloneSite(portal)
+        self.top = api.content.create(api.portal.get(), id='bench-root', type='Folder')
+        with testing.catalog_disabled():
+            testing.create_content_tree(self.top, self.n_wide, self.n_deep)
+        catalog = api.portal.get_tool('portal_catalog')
+        catalog.clearFindAndRebuild()
+        self._sanity_checks()
+
+      
+class VanillaDXBenchLayer(BenchmarkLayer):
+    """A layer which ensure Dexteity is used for the default content types."""
+
+    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE, 
+                    PAEvent_FIXTURE, 
+                    pa_testing.PLONE_FIXTURE)
+
+    def _sanity_checks(self):
+        assert self.top.meta_type.startswith('Dexterity')
+
+
+class InstalledDXBenchLayer(testing.SecurityIndexingLayerMixin,
+                            VanillaDXBenchLayer):
+    """A benchmark layer that installs plone.app.contenttypes,
+    and this addon package.
+    """
+
+
+class VanillaATBenchLayer(BenchmarkLayer):
+    """A Plone 4.3.x layer for benchmarking.
+
+    This layer installs no additional addons.
+    """
+
+    def _sanity_checks(self):
+        assert self.top.meta_type.startswith('ATFolder')
+
+
+class InstalledATBenchLayer(testing.SecurityIndexingLayerMixin,
+                            VanillaATBenchLayer):
+    """A benchmark layer this addon package installed."""
+
+
+DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
+DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_VANILLA_FIXTURE,),
+    name='VanillaDXLayer:Integration'
+)
+
+DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
+DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_INSTALLED_FIXTURE,),
+    name='InstalledDXLayer:Integration'
+)
+
+AT_VANILLA_FIXTURE = VanillaATBenchLayer()
+AT_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_VANILLA_FIXTURE,),
+    name='VanillaATLayer:Integration'
+)
+
+AT_INSTALLED_FIXTURE = InstalledATBenchLayer()
+AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_INSTALLED_FIXTURE,),
+    name='InstalledATLayer:Integration'
+)
+
 
 
 class BenchTestMixin(object):
@@ -48,22 +135,22 @@ class BenchTestMixin(object):
 
 class VanillaDXBenchTest(BenchTestMixin, unittest.TestCase):
 
-    layer = testing.DX_VANILLA_INTEGRATION
+    layer = DX_VANILLA_INTEGRATION
     
 
 class InstalledDXBenchTest(VanillaDXBenchTest):
 
-    layer = testing.DX_INSTALLED_INTEGRATION
+    layer = DX_INSTALLED_INTEGRATION
 
 
 class VanillaATBenchTest(BenchTestMixin, unittest.TestCase):
 
-    layer = testing.AT_VANILLA_INTEGRATION
+    layer = AT_VANILLA_INTEGRATION
            
 
 class InstalledATBenchTest(VanillaATBenchTest):
 
-    layer = testing.AT_INSTALLED_INTEGRATION
+    layer = AT_INSTALLED_INTEGRATION
 
 
 

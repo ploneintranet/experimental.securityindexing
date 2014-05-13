@@ -4,6 +4,7 @@ from plone.indexer.interfaces import IIndexableObject
 from plone import api
 from Products.CMFCore.interfaces import ICatalogTool
 import mock
+import plone.app.testing as pa_testing
 import zope.component
 import zope.interface
 
@@ -21,32 +22,37 @@ class ARUIndexerTestsMixin(object):
         except KeyError:
             raise AttributeError(name)
 
-    def _create_folder(self, path, local_roles, block=False):
+    def _create_folder(self, path, local_roles, block=None):
         id = path.split('/')[-1]
-        parent_path = path.split('/')[:-1]
+        parent_path = filter(bool, path.split('/')[:-1])
         if parent_path:
-            parent = api.content.get(path='/'.join(parent_path))
+            obj_path = '/%s' % '/'.join(parent_path)
+            parent = api.content.get(path=obj_path)
         else:
             parent = self.portal
         folder = api.content.create(container=parent,
-                                    id=id,
-                                    type='Folder')
+                                    type='Folder',
+                                    id=id)
+        folder.__ac_local_roles_block__ = block
         self.folders_by_path[path] = folder
 
     def _populate(self):
         self.folders_by_path = {}
         create_folder = self._create_folder
-        create_folder('/a', ['Anonymous'])
-        create_folder('/a/b', ['Anonymous'])
-        create_folder('/a/b/c', ['Anonymous', 'Authenticated'])
-        create_folder('/a/b/c/a', ['Anonymous', 'Authenticated'])
-        create_folder('/a/b/c/d', ['Anonymous', 'Authenticated'])
-        create_folder('/a/b/c/e', ['Anonymous', 'Authenticated'], block=True)
-        create_folder('/a/b/c/e/f', ['Authenticated'])
-        create_folder('/a/b/c/e/f/g', ['Reviewer'])
+        with testing.catalog_disabled():
+            create_folder('/a', ['Anonymous'])
+            create_folder('/a/b', ['Anonymous'])
+            create_folder('/a/b/c', ['Anonymous', 'Authenticated'])
+            create_folder('/a/b/c/a', ['Anonymous', 'Authenticated'])
+            create_folder('/a/b/c/d', ['Anonymous', 'Authenticated'])
+            create_folder('/a/b/c/e', ['Anonymous', 'Authenticated'], block=True)
+            create_folder('/a/b/c/e/f', ['Authenticated'])
+            create_folder('/a/b/c/e/f/g', ['Reviewer'])
+        catalog = api.portal.get_tool('portal_catalog')
+        catalog.clearFindAndRebuild()
 
     def _get_target_class(self):
-        from .adapters import ARUIndexer
+        from ..adapters import ARUIndexer
         return ARUIndexer
 
     def _make_one(self, *args, **kw):
@@ -55,7 +61,8 @@ class ARUIndexerTestsMixin(object):
 
     def _query(self, local_roles, operator='or'):
         catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.searchResults({
+        import pdb; pdb.set_trace()
+        brains = catalog.unrestrictedSearchResults({
             'allowedRolesAndUsers': {
                 'query': local_roles,
                 'operator': operator
@@ -70,68 +77,48 @@ class ARUIndexerTestsMixin(object):
             self.assertTrue(node.token,
                             msg='Node has no security info: %r' % node)
 
-    def _check_index(self, local_roles, expected, operator='or', dummy=None):
-        actual = set(self._query_index(local_roles, operator=operator))
-        self.assertEqual(actual, set(expected))
-        if dummy:
-            self._check_shadowtree_nodes_have_security_info(dummy)
+    def _check_catalog(self, local_roles, expected_paths, search_operator='or'):
+        brains = self._query(local_roles, operator=search_operator)
+        prefix = '/%s' % self.portal.getId()
+        paths = set(brain.getPath().replace(prefix, '') for brain in brains)
+        self.assertSetEqual(paths, set(expected_paths))
 
-    def _effect_change(self, document_id, obj):
-        self._values[document_id] = obj
-        self._index.index_object(
-            document_id,
-            obj
-        )
+    # TODO: we want the equiv of this, but check that shadow tree mirrors content tree.
+    # def _check_index(self, local_roles, expected, operator='or', dummy=None):
+    #     actual = set(self._query_index(local_roles, operator=operator))
+    #     self.assertEqual(actual, set(expected))
+    #     if dummy:
+    #         self._check_shadowtree_nodes_have_security_info(dummy)
 
-    def test_interfaces(self):
-        from Products.PluginIndexes.interfaces import IPluggableIndex
-        from Products.PluginIndexes.interfaces import ISortIndex
-        from Products.PluginIndexes.interfaces import IUniqueValueIndex
-        from zope.interface.verify import verifyClass
-        LocalRolesIndex = self._get_target_class()
-        verifyClass(IPluggableIndex, LocalRolesIndex)
-        verifyClass(ISortIndex, LocalRolesIndex)
-        verifyClass(IUniqueValueIndex, LocalRolesIndex)
+    def _effect_change(self, obj, local_roles, block=False):
+        obj.manage_setLocalRoles(local_roles)
+        obj.reindexObjectSecurity()
 
-    def test_index_populated(self):
+    def setUp(self):
+        portal = self.portal
+        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
+        pa_testing.login(portal, pa_testing.TEST_USER_NAME)
+
+    def test_initial_populated_state(self):
         self._populate()
-        values = self._values
-        self.assertEqual(len(self._index.referencedObjects()), len(values))
+        self._check_catalog(['Anonymous'], {
+            '/a',
+            '/a/b',
+            '/a/b/c',
+            '/a/b/c/a',
+            '/a/b/c/d',
+            '/a/b/c/e'
+        })
+        self._check_catalog(['Authenticated'], {
+            '/a/b/c',
+            '/a/b/c/a',
+            '/a/b/c/d',
+            '/a/b/c/e',
+            '/a/b/c/e/f'
+        })
+        self._check_catalog(['Member'], set())
 
-    def test_index_clear(self):
-        self._populate()
-        values = self._values
-        self.assertEqual(len(self._index.referencedObjects()), len(values))
-        self._index.clear()
-        self.assertEqual(len(self._index.referencedObjects()), 0)
-        self.assertEqual(list(self._index.shadowtree.descendants()), [])
-
-    def test_index_object_noop(self):
-        self._populate()
-        try:
-            self._index.index_object(999, None)
-        except Exception:
-            self.fail('Should not raise (see KeywordIndex tests)')
-
-    def test_index_empty(self):
-        self.assertEqual(len(self._index), 0)
-        assert len(self._index.referencedObjects()) == 0
-        self.assertEqual(self._index.numObjects(), 0)
-        self.assertIsNone(self._index.getEntryForObject(1234))
-        self.assertEqual(self._index.getEntryForObject(1234, self._marker),
-                         self._marker)
-        self._index.unindex_object(1234)
-        assert self._index.hasUniqueValuesFor('allowedRolesAndUsers')
-        assert not self._index.hasUniqueValuesFor('notAnIndex')
-        assert len(self._index.uniqueValues('allowedRolesAndUsers')) == 0
-
-    def test_index_object(self):
-        self._populate()
-        self._check_index(['Anonymous'], (0, 1, 2, 3, 4, 5))
-        self._check_index(['Authenticated'], (2, 3, 4, 5, 6))
-        self._check_index(['Member'], ())
-
-    def test__index_object_on_change_no_recurse(self):
+    def test_reindexObjectSecurity(self):
         self._populate()
         result = self._query_index(['Anonymous', 'Authenticated'],
                                    operator='and')
@@ -202,12 +189,12 @@ class ARUIndexerTestsMixin(object):
 
 class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
 
-    layer = testing.DX_INSTALLED_INTEGRATION
+    layer = testing.DX_INTEGRATION
 
 
 class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
 
-    layer = testing.AT_INSTALLED_INTEGRATION
+    layer = testing.AT_INTEGRATION
 
 
 if __name__ == '__main__':
