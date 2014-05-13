@@ -57,7 +57,6 @@ class ARUIndexerTestsMixin(object):
 
     def _query(self, local_roles, operator='or'):
         catalog = api.portal.get_tool('portal_catalog')
-        import pdb; pdb.set_trace()
         brains = catalog.unrestrictedSearchResults({
             'allowedRolesAndUsers': {
                 'query': local_roles,
