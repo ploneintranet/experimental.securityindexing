@@ -11,6 +11,12 @@ from zope.annotation.interfaces import IAnnotations
 
 
 def get_root():
+    """Gets the root shadow tree.
+
+    Creates the root node if one hasn't previously been
+    created.
+    """
+    # TODO: This annotated storage needs to be deleted upon product uninstall
     storage = IAnnotations(api.portal.get())
     root = storage.get(__package__)
     if root is None:
