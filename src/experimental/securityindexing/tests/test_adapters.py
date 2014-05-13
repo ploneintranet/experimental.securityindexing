@@ -1,17 +1,12 @@
 import unittest
 
-from plone.indexer.interfaces import IIndexableObject
 from plone import api
-from Products.CMFCore.interfaces import ICatalogTool
-import mock
 import plone.app.testing as pa_testing
 import zope.component
 import zope.interface
 
 
 from .. import testing
-
-# from ..interfaces import IDecendantLocalRolesAware
 
 class ARUIndexerTestsMixin(object):
     """Tests for ARUIndexer Adapter."""
@@ -45,7 +40,8 @@ class ARUIndexerTestsMixin(object):
             create_folder('/a/b/c', ['Anonymous', 'Authenticated'])
             create_folder('/a/b/c/a', ['Anonymous', 'Authenticated'])
             create_folder('/a/b/c/d', ['Anonymous', 'Authenticated'])
-            create_folder('/a/b/c/e', ['Anonymous', 'Authenticated'], block=True)
+            create_folder('/a/b/c/e', ['Anonymous', 'Authenticated'],
+                          block=True)
             create_folder('/a/b/c/e/f', ['Authenticated'])
             create_folder('/a/b/c/e/f/g', ['Reviewer'])
         catalog = api.portal.get_tool('portal_catalog')
@@ -77,7 +73,8 @@ class ARUIndexerTestsMixin(object):
             self.assertTrue(node.token,
                             msg='Node has no security info: %r' % node)
 
-    def _check_catalog(self, local_roles, expected_paths, search_operator='or'):
+    def _check_catalog(self, local_roles, expected_paths,
+                       search_operator='or'):
         brains = self._query(local_roles, operator=search_operator)
         prefix = '/%s' % self.portal.getId()
         paths = set(brain.getPath().replace(prefix, '') for brain in brains)
