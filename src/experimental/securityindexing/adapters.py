@@ -25,6 +25,8 @@ class _IndexablContentProxy(object):
 
 class ARUIndexer(object):
 
+    _index_ids = ('allowedRolesAndUsers',)
+
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
@@ -34,10 +36,8 @@ class ARUIndexer(object):
         return getattr(self.context, name)
 
     def _reindex_object_security(self, obj):
-        path = obj.getPath()
-        idxs = self.context._cmf_security_indexes
         reindex = self.catalog_tool.reindexObject
-        reindex(obj, idxs=idxs, update_metadata=0, uid=path)
+        reindex(obj, idxs=self._index_ids, update_metadata=0)
 
     def _to_indexable(self, obj):
         return getMultiAdapter((obj, self.catalog_tool), IIndexableObject)
@@ -57,16 +57,16 @@ class ARUIndexer(object):
         # Get the token afterwards
         token_after = node.token
 
-        # reindex ourselve, as we need to do this regardless of changes
-        # as this might have been a workflow change and hence
-        # allowedRolesAndUsers may have changed
+        # reindex ourself, as we need to do this regardless of changes
+        # as this might have been a workflow change, and hence
+        # allowedRolesAndUsers may have changed.
         self._reindex_object_security(obj)
 
         if token_before != token_after:
             # The tokens before and after are different which means
             # we need to re-index our children as our local roles
-            # have changed, and hence our children's
-            # allowedRolesAndUsers value will have changed
+            # have changed, and hence the value of allowedRolesAndUsers 
+            # on our descendants will also have changed.
 
             # We need to group the nodes that have the same token
             # we start with adding overself.

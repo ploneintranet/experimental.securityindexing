@@ -35,7 +35,7 @@ class ARUIndexerTestsMixin(object):
                              obj=folder,
                              roles=local_roles)
         folder.__ac_local_roles_block__ = block
-        folder.indexObject()
+        self._call_mut(folder)
         self.folders_by_path[path] = folder
 
     def _populate(self):
@@ -195,7 +195,7 @@ class ARUIndexerTestsMixin(object):
         pa_testing.login(self.portal, 'matt')
         obj = self.folders_by_path['/a/b']
         api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])
-        obj.reindexObjectSecurity()
+        self._call_mut(obj)
         pa_testing.logout()
 
         pa_testing.login(self.portal, 'guido')
@@ -227,12 +227,13 @@ class ARUIndexerTestsMixin(object):
         # Grant liz access to a node higher up
         obj = self.folders_by_path['/a/b/c']
         api.user.grant_roles(username='liz', obj=obj, roles=['Reader'])
-        obj.reindexObjectSecurity()
+        self._call_mut(obj)
 
         # Revoke liz's original access to e (and descendants)
         obj = self.folders_by_path['/a/b/c/e']
+
         api.user.revoke_roles(username='liz', obj=obj, roles=['Reader'])
-        obj.reindexObjectSecurity()
+        self._call_mut(obj)
 
         # Check liz can see everything under her granted access *up until a local role block*
         brains = catalog.searchResults()
@@ -246,8 +247,8 @@ class ARUIndexerTestsMixin(object):
     def test_reindexObjectSecurity_on_local_role_block_removal(self):
         self._private_content_with_default_workflow()
         obj = self.folders_by_path['/a']
-        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])
-        obj.reindexObjectSecurity()
+        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])        
+        self._call_mut(obj)
         pa_testing.logout()
 
         pa_testing.login(self.portal, 'guido')
@@ -267,13 +268,24 @@ class ARUIndexerTestsMixin(object):
         pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
         obj = self.folders_by_path['/a/b/c/e']
         obj.__ac_local_roles_block__ = None
-        obj.reindexObjectSecurity()
+        self._call_mut(obj)
         pa_testing.logout()
 
         pa_testing.login(self.portal, 'guido')
         brains = catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertSetEqual(actual, set(self.folders_by_path))
+
+
+class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
+
+    layer = testing.AT_INTEGRATION
+
+
+class TestARUIndexerATPatched(TestARUIndexerAT):
+
+    def _call_mut(self, obj, **kw):
+        obj.reindexObjectSecurity(**kw)
 
 
 class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
@@ -286,9 +298,10 @@ class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
         api.content.delete(obj=self.portal['robot-test-folder'])
 
 
-class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
+class TestARUIndexerDXPatched(TestARUIndexerDX):
 
-    layer = testing.AT_INTEGRATION
+    def _call_mut(self, obj, **kw):
+        obj.reindexObjectSecurity(**kw)
 
 
 if __name__ == '__main__':

@@ -105,8 +105,9 @@ class Node(Persistent):
         :rtype: int
         """
         acl_users = api.portal.get_tool('acl_users')
-        local_roles = acl_users._getAllLocalRoles(obj)
-        return hash(frozenset(local_roles))
+        ac_local_roles = acl_users._getAllLocalRoles(obj)
+        local_roles = tuple((k, frozenset(v)) for (k, v) in ac_local_roles.items())
+        return hash(local_roles)
     
     @staticmethod
     def get_local_roles_block(obj):
@@ -139,7 +140,7 @@ class Node(Persistent):
         """Update the security information for an object.
 
         :param obj: The portal content object.
-        :type obj: Products.CMFCore.PortalConten
+        :type obj: Products.CMFCore.PortalContent
         """
         self.physical_path = obj.getPhysicalPath()
         self.block_inherit_roles = self.get_local_roles_block(obj)

@@ -14,6 +14,9 @@ class _Dummy(object):
         self.__ac_local_roles_block__ = local_roles_block
         self.id = self.path.split('/')[-1]
 
+    # TODO: This class should probably define __ac_local_roles__
+    #       to more closely simulate real plone objects.
+
     def __str__(self):
         return '<Dummy: %s>' % self.id
 
@@ -60,13 +63,15 @@ class TestShadowTreeNode(unittest.TestCase):
         self.plone_api_patcher.stop()
 
     def test_create_security_token_on_attributeerror(self):
-        local_roles = ['Role1', 'Role2']
+        local_roles = {'Role1', 'Role2'}
         obj1 = _Dummy('/a/b/c', local_roles, local_roles_block=False)
         obj2 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
 
         with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
             acl_users = patch.portal.get_tool.return_value
-            acl_users._getAllLocalRoles.return_value = local_roles
+            acl_users._getAllLocalRoles.return_value = {
+                'some_user_name_1_': local_roles
+            }
 
             st1, st2 = map(self._create_security_token, (obj1, obj1))
             self.assertEqual(st1, st2)
@@ -74,15 +79,20 @@ class TestShadowTreeNode(unittest.TestCase):
             st1, st2 = map(self._create_security_token, (obj1, obj2))
             self.assertEqual(st1, st2)
 
-        local_roles = ['Role1']
+        local_roles = {'Role1'}
+
         obj3 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
         with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
             acl_users = patch.portal.get_tool.return_value
 
-            acl_users._getAllLocalRoles.return_value = ['Role1', 'Role2']
+            acl_users._getAllLocalRoles.return_value = {
+                'some_user_name': {'Role1', 'Role2'}
+            }
             st1 = self._create_security_token(obj2)
 
-            acl_users._getAllLocalRoles.return_value = ['Role1']
+            acl_users._getAllLocalRoles.return_value = {
+                'some_user_name': {'Role1'}
+            }
             st2 = self._create_security_token(obj3)
 
             self.assertNotEqual(st1, st2)
