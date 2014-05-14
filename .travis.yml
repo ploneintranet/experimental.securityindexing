@@ -6,7 +6,7 @@ install:
   - bin/buildout -N -t 3 -c travis.cfg
 script:
   - bin/test
-  - bin/flake8 src/experimental
+#  - bin/flake8 src/experimental
 after_success:
   - bin/createcoverage run --src=src/experimental bin/test -s experimental.securityindexing
   - pip install -q coveralls
