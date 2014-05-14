@@ -2,6 +2,7 @@ import unittest
 
 import mock
 
+
 _PORTAL_ID = 'plone'
 
 
@@ -59,17 +60,32 @@ class TestShadowTreeNode(unittest.TestCase):
         self.plone_api_patcher.stop()
 
     def test_create_security_token_on_attributeerror(self):
-        obj1 = _Dummy('/a/b/c', ['Role1', 'Role2'], local_roles_block=False)
-        st1, st2 = map(self._create_security_token, (obj1, obj1))
-        self.assertEqual(st1, st2)
+        local_roles = ['Role1', 'Role2']
+        obj1 = _Dummy('/a/b/c', local_roles, local_roles_block=False)
+        obj2 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
 
-        obj2 = _Dummy('/a/b/c', ['Role1', 'Role2'], local_roles_block=True)
-        st1, st2 = map(self._create_security_token, (obj1, obj2))
-        self.assertNotEqual(st1, st2)
+        with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
+            acl_users = patch.portal.get_tool.return_value
+            acl_users._getAllLocalRoles.return_value = local_roles
 
-        obj3 = _Dummy('/a/b/c', ['Role1'], local_roles_block=True)
-        st1, st2 = map(self._create_security_token, (obj2, obj3))
-        self.assertNotEqual(st1, st2)
+            st1, st2 = map(self._create_security_token, (obj1, obj1))
+            self.assertEqual(st1, st2)
+
+            st1, st2 = map(self._create_security_token, (obj1, obj2))
+            self.assertEqual(st1, st2)
+
+        local_roles = ['Role1']
+        obj3 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
+        with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
+            acl_users = patch.portal.get_tool.return_value
+
+            acl_users._getAllLocalRoles.return_value = ['Role1', 'Role2']
+            st1 = self._create_security_token(obj2)
+
+            acl_users._getAllLocalRoles.return_value = ['Role1']
+            st2 = self._create_security_token(obj3)
+
+            self.assertNotEqual(st1, st2)
 
         # TODO: Is it guarenteed that ARU will be in the same order?
         #       i.e Is security token for [r1, r2] to be

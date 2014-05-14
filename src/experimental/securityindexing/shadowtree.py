@@ -5,14 +5,17 @@ each node storing security identifiers in order to enablable
 an index to make decisions when indexing.
 """
 from __future__ import print_function
+
 import BTrees
 from persistent import Persistent
 from plone import api
 from zope.annotation.interfaces import IAnnotations
 
+
 _marker = object()
 
-
+# TODO: we'll need to split this function up in order
+#       to clear the shadow tree in the GS uninstall profile.
 def get_root():
     storage = IAnnotations(api.portal.get())
     root = storage.get(__package__)
@@ -23,9 +26,7 @@ def get_root():
 
 
 class Node(Persistent):
-
     """A Node corresponding to a content item in the a Zope instance.
-
     """
     __parent__ = None
     id = None
@@ -86,6 +87,16 @@ class Node(Persistent):
     def create_security_token(cls, obj):
         """Create a security token for `obj`.
 
+        We use the return value of `acl_users._getAllLocalRoles` 
+        as for hashing, since its desired to use all parent local roles.
+
+        `allowedRolesUsers` is not used, as  sometimes the sequence does
+        not contain the full set of local roles, since shortcuts are utilised 
+        for certain cases, e.g: 
+                
+          * Anonymous
+          * Authenticated
+        
         :param cls: The type of this node.
         :type cls: experimental.localrolesindex.shadowtree.Node
         :param obj: The content item.
@@ -93,13 +104,10 @@ class Node(Persistent):
         :returns: The hash of the local role information contained by `obj`.
         :rtype: int
         """
-        local_roles = obj.allowedRolesAndUsers
-        if callable(local_roles):
-            local_roles = local_roles()
-        local_roles = tuple(local_roles)
-        blocked = cls.get_local_roles_block(obj)
-        return hash((local_roles, blocked))
-
+        acl_users = api.portal.get_tool('acl_users')
+        local_roles = acl_users._getAllLocalRoles(obj)
+        return hash(frozenset(local_roles))
+    
     @staticmethod
     def get_local_roles_block(obj):
         return getattr(obj, '__ac_local_roles_block__', False)
