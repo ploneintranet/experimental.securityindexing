@@ -1,20 +1,17 @@
-from __future__ import print_function
 import unittest
 
 from plone import api
 import plone.app.testing as pa_testing
 
-from .. import testing
+from .. import shadowtree, testing
 
 
-class ARUIndexerTestsMixin(object):
-    """Tests for ARUIndexer Adapter."""
+class ObjectSecurityTestsMixin(object):
+    """Tests for ObjectSecurityIndexer Adapter."""
 
-    def __getattr__(self, name):
-        try:
-            return self.layer[name]
-        except KeyError:
-            raise AttributeError(name)
+    @property
+    def portal(self):
+        return self.layer['portal']
 
     def _create_folder(self, path, local_roles,
                        userid=pa_testing.TEST_USER_ID,
@@ -48,9 +45,22 @@ class ARUIndexerTestsMixin(object):
         create_folder('/a/b/c/e/f', ['Reader'])
         create_folder('/a/b/c/e/f/g', ['Reviewer'])
 
+    def _check_shadowtree_nodes_have_security_info(self):
+        portal_id = self.portal.getId()
+        for (path, obj) in sorted(self.folders_by_path.items(), key=len):
+            node = shadowtree.get_root()
+            path_components = list(filter(bool, obj.getPhysicalPath()))
+            path_components.remove(portal_id)
+            for path_component in path_components:
+                node = node[path_component]
+                self.assertTrue(hasattr(node, 'block_inherit_roles'))
+                self.assertTrue(node.token,
+                                msg='Node has no security info: %r' % node)
+            self.assertEqual(node.physical_path, obj.getPhysicalPath())
+
     def _get_target_class(self):
-        from ..adapters import ARUIndexer
-        return ARUIndexer
+        from ..adapters import ObjectSecurity
+        return ObjectSecurity
 
     def _make_one(self, *args, **kw):
         cls = self._get_target_class()
@@ -59,7 +69,8 @@ class ARUIndexerTestsMixin(object):
     def _call_mut(self, obj, **kw):
         catalog = api.portal.get_tool('portal_catalog')
         adapter = self._make_one(obj, catalog)
-        adapter.reindexObjectSecurity()
+        adapter.reindex()
+        self._check_shadowtree_nodes_have_security_info()
 
     def _query(self, local_roles, operator='or'):
         pa_testing.logout()
@@ -72,13 +83,6 @@ class ARUIndexerTestsMixin(object):
             }
         })
         return brains
-
-    def _check_shadowtree_nodes_have_security_info(self, dummy):
-        node = self._index.shadowtree
-        for path_component in filter(bool, dummy.getPhysicalPath()):
-            node = node[path_component]
-            self.assertTrue(node.token,
-                            msg='Node has no security info: %r' % node)
 
     def _check_catalog(self,
                        local_roles,
@@ -100,7 +104,7 @@ class ARUIndexerTestsMixin(object):
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
         wftool = api.portal.get_tool('portal_workflow')
         wftool.setDefaultChain('intranet_workflow')
-        # Create a user that never is the Owner of
+        # Create a user that never is owns
         # any objects created by this test.
         self.query_user = api.user.create(
             email='querier-test-user@netsight.co.uk',
@@ -135,7 +139,6 @@ class ARUIndexerTestsMixin(object):
         self._check_catalog(['Reader'], set(self.folders_by_path))
 
     def _check_shadowtree_paths(self, expected_paths):
-        from .. import shadowtree
         root = shadowtree.get_root()
         shadow_paths = {
             node.physical_path
@@ -172,7 +175,7 @@ class ARUIndexerTestsMixin(object):
         brains = catalog.searchResults()
         self.assertEqual(len(brains), 0)
 
-    def test_reindexObjectSecurity_on_workflow_transistion(self):
+    def test_reindex_on_workflow_transistion(self):
         # transition an object to published
         # check that children of object do not show up in
         # catalog search results.
@@ -187,7 +190,7 @@ class ARUIndexerTestsMixin(object):
         brains = catalog.searchResults()
         self.assertEqual(brains[0].getPath(), '/plone/a')
 
-    def test_reindexObjectSecurity_on_grant_roles(self):
+    def test_reindex_on_grant_roles(self):
         pa_testing.login(self.portal, 'matt')
         self._private_content_with_default_workflow()
 
@@ -209,7 +212,7 @@ class ARUIndexerTestsMixin(object):
             '/a/b/c/d'
         })
 
-    def test_reindexObjectSecurity_on_revoke_roles(self):
+    def test_reindex_on_revoke_roles(self):
         self._private_content_with_default_workflow()
         pa_testing.logout()
         pa_testing.login(self.portal, 'liz')
@@ -243,7 +246,7 @@ class ARUIndexerTestsMixin(object):
             '/a/b/c/d'
         })
 
-    def test_reindexObjectSecurity_on_local_role_block_removal(self):
+    def test_reindex_on_local_role_block_removal(self):
         self._private_content_with_default_workflow()
         obj = self.folders_by_path['/a']
         api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])
@@ -276,32 +279,31 @@ class ARUIndexerTestsMixin(object):
         self.assertSetEqual(actual, set(self.folders_by_path))
 
 
-class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
+class TestObjectSecurityAT(ObjectSecurityTestsMixin, unittest.TestCase):
 
     layer = testing.AT_INTEGRATION
 
 
-class TestARUIndexerATPatched(TestARUIndexerAT):
+class _PatchedMixin(object):
 
     def _call_mut(self, obj, **kw):
         obj.reindexObjectSecurity(**kw)
 
 
-class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
+class TestObjectSecurityATPatched(_PatchedMixin, TestObjectSecurityAT):
+    """Run the tests with the monkey patched method."""
+
+
+class TestObjectSecurityDX(ObjectSecurityTestsMixin, unittest.TestCase):
 
     layer = testing.DX_INTEGRATION
 
     def setUp(self):
         # Delete a fodler created by the p.a{contenttypes,event} fixtures
-        super(TestARUIndexerDX, self).setUp()
+        super(TestObjectSecurityDX, self).setUp()
         api.content.delete(obj=self.portal['robot-test-folder'])
 
 
-class TestARUIndexerDXPatched(TestARUIndexerDX):
-
-    def _call_mut(self, obj, **kw):
-        obj.reindexObjectSecurity(**kw)
-
-
-if __name__ == '__main__':
-    unittest.main()
+class TestObjectSecurityDXPatched(_PatchedMixin,
+                                  TestObjectSecurityDX):
+    """Run the tests with the monkey patched method."""
