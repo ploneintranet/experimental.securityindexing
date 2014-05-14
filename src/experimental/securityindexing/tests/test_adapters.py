@@ -3,8 +3,6 @@ import unittest
 
 from plone import api
 import plone.app.testing as pa_testing
-import zope.component
-import zope.interface
 
 from .. import testing
 
@@ -176,13 +174,14 @@ class ARUIndexerTestsMixin(object):
 
     def test_reindexObjectSecurity_on_workflow_transistion(self):
         # transition an object to published
-        # check that children of object do not show up in catalog search results.
+        # check that children of object do not show up in
+        # catalog search results.
         self._private_content_with_default_workflow()
-        
         pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
         api.content.transition(self.folders_by_path['/a'], 'show')
 
-        # Logout, check that we can access the item that's been shown and nothing else.
+        # Logout, check that we can access the item that's
+        # been shown and nothing else.
         pa_testing.logout()
         catalog = api.portal.get_tool('portal_catalog')
         brains = catalog.searchResults()
@@ -223,7 +222,6 @@ class ARUIndexerTestsMixin(object):
             '/a/b/c/e/f',
             '/a/b/c/e/f/g'
         })
-        
         # Grant liz access to a node higher up
         obj = self.folders_by_path['/a/b/c']
         api.user.grant_roles(username='liz', obj=obj, roles=['Reader'])
@@ -235,7 +233,8 @@ class ARUIndexerTestsMixin(object):
         api.user.revoke_roles(username='liz', obj=obj, roles=['Reader'])
         self._call_mut(obj)
 
-        # Check liz can see everything under her granted access *up until a local role block*
+        # Check liz can see everything under her granted
+        # access *up until a local role block*
         brains = catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertEqual(actual, {
@@ -247,7 +246,7 @@ class ARUIndexerTestsMixin(object):
     def test_reindexObjectSecurity_on_local_role_block_removal(self):
         self._private_content_with_default_workflow()
         obj = self.folders_by_path['/a']
-        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])        
+        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])
         self._call_mut(obj)
         pa_testing.logout()
 

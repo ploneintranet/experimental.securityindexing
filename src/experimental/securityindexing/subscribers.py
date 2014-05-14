@@ -6,7 +6,6 @@ from plone import api
 from zope.component import queryMultiAdapter
 from zope.lifecycleevent.interfaces import (
     IObjectAddedEvent,
-    IObjectModifiedEvent,
     IObjectRemovedEvent
 )
 

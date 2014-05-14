@@ -66,8 +66,8 @@ class TestShadowTreeNode(unittest.TestCase):
         local_roles = {'Role1', 'Role2'}
         obj1 = _Dummy('/a/b/c', local_roles, local_roles_block=False)
         obj2 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
-
-        with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
+        dotted_name = 'experimental.securityindexing.shadowtree.api'
+        with mock.patch(dotted_name) as patch:
             acl_users = patch.portal.get_tool.return_value
             acl_users._getAllLocalRoles.return_value = {
                 'some_user_name_1_': local_roles
@@ -80,9 +80,8 @@ class TestShadowTreeNode(unittest.TestCase):
             self.assertEqual(st1, st2)
 
         local_roles = {'Role1'}
-
         obj3 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
-        with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
+        with mock.patch(dotted_name) as patch:
             acl_users = patch.portal.get_tool.return_value
 
             acl_users._getAllLocalRoles.return_value = {
@@ -96,10 +95,6 @@ class TestShadowTreeNode(unittest.TestCase):
             st2 = self._create_security_token(obj3)
 
             self.assertNotEqual(st1, st2)
-
-        # TODO: Is it guarenteed that ARU will be in the same order?
-        #       i.e Is security token for [r1, r2] to be
-        #       considered same as one for to [r2, r1]?
 
     def test_update_security_info(self):
         root = self._make_one()

@@ -44,7 +44,7 @@ class ARUIndexer(object):
 
     def reindexObjectSecurity(self, skip_self=False):
         obj = self.context
-        # Get this object's corresponding node in the 
+        # Get this object's corresponding node in the
         # shadow tree, ensuring we have all intermediate nodes
         # on the path to it
         node = self._shadowtree.ensure_ancestry_to(obj)
@@ -65,14 +65,11 @@ class ARUIndexer(object):
         if token_before != token_after:
             # The tokens before and after are different which means
             # we need to re-index our children as our local roles
-            # have changed, and hence the value of allowedRolesAndUsers 
-            # on our descendants will also have changed.
-
+            # have changed, and hence the value of allowedRolesAndUsers
             # We need to group the nodes that have the same token
             # we start with adding overself.
             shared_tokens = collections.defaultdict(list)
             shared_tokens[node.token].append(node)
-            
             # We get all our descendants, that inherit local roles from us
             # ie we stop at local role blocks as there is no change we
             # could have done that would affect their allowedRolesAndUsers
@@ -82,7 +79,7 @@ class ARUIndexer(object):
             traverse = self.context.unrestrictedTraverse
             # For each group of nodes with the same token...
             for (old_token, nodes_group) in shared_tokens.items():
-                # get the first node of the group and get it's 
+                # get the first node of the group and get its
                 # corresponding object from the content tree
                 first_node = next(iter(nodes_group))
                 first_path = '/'.join(first_node.physical_path)
@@ -98,4 +95,3 @@ class ARUIndexer(object):
                     content_proxy = _IndexablContentProxy(aru, node)
                     # Reindex the proxy object
                     self._reindex_object_security(content_proxy)
-

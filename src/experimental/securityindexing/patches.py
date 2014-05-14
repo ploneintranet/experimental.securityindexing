@@ -17,7 +17,7 @@ def at_reindexObjectSecurity(self, skip_self=False):
     for catalog in catalogs:
         adapter = ARUIndexer(self, catalog)
         adapter.reindexObjectSecurity(skip_self=skip_self)
-    
+
 
 def dx_reindexObjectSecurity(self, skip_self=False):
     catalog_tool = self._getCatalogTool()
@@ -25,4 +25,3 @@ def dx_reindexObjectSecurity(self, skip_self=False):
         return
     adapter = ARUIndexer(self, catalog_tool)
     adapter.reindexObjectSecurity(skip_self=skip_self)
-    

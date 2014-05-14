@@ -2,7 +2,6 @@ from __future__ import print_function
 import collections
 import csv
 import datetime
-import time
 import unittest
 
 import pkg_resources
@@ -23,28 +22,30 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
     of packages is performed.
     """
     n_wide = 10
-    n_deep = 4
+    n_deep = 8
 
     def _sanity_checks(self):
         raise NotImplementedError()
-       
+
     def setUpPloneSite(self, portal):
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
         super(BenchmarkLayer, self).setUpPloneSite(portal)
-        self.top = api.content.create(api.portal.get(), id='bench-root', type='Folder')
+        self.top = api.content.create(api.portal.get(),
+                                      id='bench-root',
+                                      type='Folder')
         with testing.catalog_disabled():
             testing.create_content_tree(self.top, self.n_wide, self.n_deep)
         catalog = api.portal.get_tool('portal_catalog')
         catalog.clearFindAndRebuild()
         self._sanity_checks()
 
-      
+
 class VanillaDXBenchLayer(BenchmarkLayer):
     """A layer which ensure Dexteity is used for the default content types."""
 
-    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE, 
-                    PAEvent_FIXTURE, 
+    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE,
+                    PAEvent_FIXTURE,
                     pa_testing.PLONE_FIXTURE)
 
     def _sanity_checks(self):
@@ -98,12 +99,13 @@ AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
 )
 
 
-
 class BenchTestMixin(object):
 
-    results_path = pkg_resources.resource_filename(__package__, 'bench-results.csv')
+    results_path = pkg_resources.resource_filename(
+        __package__, 'bench-results.csv'
+    )
 
-    def _write_result(self, duration):      
+    def _write_result(self, duration):
         pc = api.portal.get_tool('portal_catalog')
         portal = self.layer['portal']
         bench_root_path = '/'.join(portal['bench-root'].getPhysicalPath())
@@ -136,7 +138,7 @@ class BenchTestMixin(object):
 class VanillaDXBenchTest(BenchTestMixin, unittest.TestCase):
 
     layer = DX_VANILLA_INTEGRATION
-    
+
 
 class InstalledDXBenchTest(VanillaDXBenchTest):
 
@@ -146,12 +148,11 @@ class InstalledDXBenchTest(VanillaDXBenchTest):
 class VanillaATBenchTest(BenchTestMixin, unittest.TestCase):
 
     layer = AT_VANILLA_INTEGRATION
-           
+
 
 class InstalledATBenchTest(VanillaATBenchTest):
 
     layer = AT_INSTALLED_INTEGRATION
-
 
 
 if __name__ == '__main__':
