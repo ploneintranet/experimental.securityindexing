@@ -1,16 +1,21 @@
 import unittest
 
+import mock
 
-from .. import testing
+
+_PORTAL_ID = 'plone'
 
 
 class _Dummy(object):
 
-    def __init__(self, path, local_roles, local_roles_block=False):
-        self.path = path
+    def __init__(self, vpath, local_roles, local_roles_block=False):
+        self.path = '/%s%s' % (_PORTAL_ID, vpath)
         self.aru = local_roles
         self.__ac_local_roles_block__ = local_roles_block
-        self.id = path.split('/')[-1]
+        self.id = self.path.split('/')[-1]
+
+    # TODO: This class should probably define __ac_local_roles__
+    #       to more closely simulate real plone objects.
 
     def __str__(self):
         return '<Dummy: %s>' % self.id
@@ -29,6 +34,14 @@ class _Dummy(object):
 
 class TestShadowTreeNode(unittest.TestCase):
 
+    plone_api_patcher_config = {
+        'portal.get.return_value.getId.return_value': _PORTAL_ID
+    }
+    plone_api_patcher = mock.patch(
+        'experimental.securityindexing.shadowtree.api',
+        **plone_api_patcher_config
+    )
+
     def _get_target_class(self):
         from ..shadowtree import Node
         return Node
@@ -43,18 +56,46 @@ class TestShadowTreeNode(unittest.TestCase):
         self.assertIsInstance(stoken, expected_type)
         return stoken
 
+    def setUp(self):
+        self.plone_api_patcher.start()
+
+    def tearDown(self):
+        self.plone_api_patcher.stop()
+
     def test_create_security_token_on_attributeerror(self):
-        obj1 = _Dummy('/a/b/c', ['Role1', 'Role2'], local_roles_block=False)
-        st1, st2 = map(self._create_security_token, (obj1, obj1))
-        self.assertEqual(st1, st2)
+        local_roles = {'Role1', 'Role2'}
+        obj1 = _Dummy('/a/b/c', local_roles, local_roles_block=False)
+        obj2 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
 
-        obj2 = _Dummy('/a/b/c', ['Role1', 'Role2'], local_roles_block=True)
-        st1, st2 = map(self._create_security_token, (obj1, obj2))
-        self.assertNotEqual(st1, st2)
+        with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
+            acl_users = patch.portal.get_tool.return_value
+            acl_users._getAllLocalRoles.return_value = {
+                'some_user_name_1_': local_roles
+            }
 
-        obj3 = _Dummy('/a/b/c', ['Role1'], local_roles_block=True)
-        st1, st2 = map(self._create_security_token, (obj2, obj3))
-        self.assertNotEqual(st1, st2)
+            st1, st2 = map(self._create_security_token, (obj1, obj1))
+            self.assertEqual(st1, st2)
+
+            st1, st2 = map(self._create_security_token, (obj1, obj2))
+            self.assertEqual(st1, st2)
+
+        local_roles = {'Role1'}
+
+        obj3 = _Dummy('/a/b/c', local_roles, local_roles_block=True)
+        with mock.patch('experimental.securityindexing.shadowtree.api') as patch:
+            acl_users = patch.portal.get_tool.return_value
+
+            acl_users._getAllLocalRoles.return_value = {
+                'some_user_name': {'Role1', 'Role2'}
+            }
+            st1 = self._create_security_token(obj2)
+
+            acl_users._getAllLocalRoles.return_value = {
+                'some_user_name': {'Role1'}
+            }
+            st2 = self._create_security_token(obj3)
+
+            self.assertNotEqual(st1, st2)
 
         # TODO: Is it guarenteed that ARU will be in the same order?
         #       i.e Is security token for [r1, r2] to be
@@ -68,21 +109,18 @@ class TestShadowTreeNode(unittest.TestCase):
         self.assertIsNone(node.token)
         self.assertIsNone(node.physical_path)
         self.assertFalse(node.block_inherit_roles)
-        self.assertIsNone(node.document_id)
-        node.update_security_info(1, _Dummy('/foobar', ['Editor'],
-                                           local_roles_block=True))
-        self.assertEqual(node.document_id, 1)
+        node.update_security_info(_Dummy('/foobar', ['Editor'],
+                                         local_roles_block=True))
         self.assertEqual(node.id, 'foobar')
         self.assertIs(node.__parent__, root)
         self.assertIsInstance(node.token, int)
-        self.assertEqual(node.physical_path, ('', 'foobar'))
+        self.assertEqual(node.physical_path, ('', 'plone', 'foobar'))
         self.assertTrue(node.block_inherit_roles)
 
     def test_ensure_ancestry_to_one_deep(self):
         root = self._make_one()
         dummy = _Dummy('/a', ['Anonymous'])
-        Node = self._get_target_class()
-        leaf = Node.ensure_ancestry_to(dummy, root)
+        leaf = root.ensure_ancestry_to(dummy)
         self.assertIn('a', root, list(root.keys()))
         self.assertEqual(root['a'].id, leaf.id)
         self.assertIsNone(leaf.__parent__.__parent__)
@@ -94,25 +132,21 @@ class TestShadowTreeNode(unittest.TestCase):
     def test_ensure_ancestry_to_many_deep(self):
         root = self._make_one()
         dummy = _Dummy('/a/b/c', ['Anonymous'])
-        Node = self._get_target_class()
-        leaf = Node.ensure_ancestry_to(dummy, root)
+        leaf = root.ensure_ancestry_to(dummy)
 
         b = leaf.__parent__
         self.assertEqual(b.id, 'b')
-        self.assertIsNone(b.document_id)
         self.assertIsNone(b.physical_path)
         self.assertIsNone(b.token)
         self.assertFalse(b.block_inherit_roles)
 
         a = b.__parent__
         self.assertEqual(a.id, 'a')
-        self.assertIsNone(a.document_id)
         self.assertIsNone(a.physical_path)
         self.assertIsNone(a.token)
         self.assertFalse(a.block_inherit_roles)
 
         self.assertEqual(leaf.__parent__.id, 'b')
-        self.assertIsNone(leaf.document_id)
         self.assertIsNone(leaf.physical_path)
         self.assertIsNone(leaf.token)
         self.assertFalse(leaf.block_inherit_roles)
@@ -120,19 +154,17 @@ class TestShadowTreeNode(unittest.TestCase):
     def test_ensure_ancestry_to_many_deep_no_change(self):
         root = self._make_one()
         dummy = _Dummy('/a/b/c', ['Anonymous'])
-        Node = self._get_target_class()
-        leaf1 = Node.ensure_ancestry_to(dummy, root)
-        leaf2 = Node.ensure_ancestry_to(dummy, root)
+        leaf1 = root.ensure_ancestry_to(dummy)
+        leaf2 = root.ensure_ancestry_to(dummy)
         self.assertIs(leaf1, leaf2)
 
     def test_ensure_ancestry_to_changes_leaf_only(self):
         root = self._make_one()
         dummy = _Dummy('/a/b/c', ['Anonymous'])
-        Node = self._get_target_class()
-        leaf1 = Node.ensure_ancestry_to(dummy, root)
+        leaf1 = root.ensure_ancestry_to(dummy)
         self.assertFalse(root['a']['b'].block_inherit_roles)
         root['a']['b'].block_inherit_roles = True
-        leaf2 = Node.ensure_ancestry_to(dummy, root)
+        leaf2 = root.ensure_ancestry_to(dummy)
         self.assertIs(leaf1, leaf2)
         self.assertTrue(root['a']['b'].block_inherit_roles)
 
@@ -145,9 +177,8 @@ class TestShadowTreeNode(unittest.TestCase):
         root = self._make_one()
         dummy1 = _Dummy('/a/b/c1/d1/e1', ['Anonymous'])
         dummy2 = _Dummy('/a/b/c2/d2/e2/f2', ['Editor'])
-        Node = self._get_target_class()
-        Node.ensure_ancestry_to(dummy1, root)
-        Node.ensure_ancestry_to(dummy2, root)
+        root.ensure_ancestry_to(dummy1)
+        root.ensure_ancestry_to(dummy2)
         descendant_ids = list(node.id for node in root.descendants())
         expected_order = ['a', 'b', 'c1', 'd1', 'e1', 'c2', 'd2', 'e2', 'f2']
         self.assertEqual(descendant_ids, expected_order)
@@ -156,9 +187,8 @@ class TestShadowTreeNode(unittest.TestCase):
         root = self._make_one()
         dummy1 = _Dummy('/a/b/c1/d1/e1', ['Anonymous'])
         dummy2 = _Dummy('/a/b/c2/d2/e2/f2', ['Editor'])
-        Node = self._get_target_class()
-        Node.ensure_ancestry_to(dummy1, root)
-        Node.ensure_ancestry_to(dummy2, root)
+        root.ensure_ancestry_to(dummy1)
+        root.ensure_ancestry_to(dummy2)
         root['a']['b']['c2']['d2'].block_inherit_roles = True
 
         descendants = root.descendants(ignore_block=False)
@@ -170,4 +200,3 @@ class TestShadowTreeNode(unittest.TestCase):
         descendant_ids = list(node.id for node in descendants)
         expected_order = ['a', 'b', 'c1', 'd1', 'e1', 'c2', 'd2', 'e2', 'f2']
         self.assertEqual(descendant_ids, expected_order)
-

@@ -36,14 +36,20 @@ setup(name='experimental.securityindexing',
       install_requires=[
           'setuptools',
           'plone.api',
+          'plone.app.dexterity[grok]'
       ],
       extras_require={
           'test': [
+              'mock',
               'plone.app.contenttypes',
               'plone.app.event',
               'plone.app.robotframework',
-              'plone.app.testing',
-              'mock'
+              'plone.app.testing'
+          ],
+          'dexterity': [
+              'plone.app.contenttypes',
+              'plone.app.event',
+              'five.grok'
           ]
       },
       entry_points="""

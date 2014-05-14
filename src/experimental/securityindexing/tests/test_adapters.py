@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 
 from plone import api
@@ -30,20 +31,22 @@ class ARUIndexerTestsMixin(object):
         folder = api.content.create(container=parent,
                                     type='Folder',
                                     id=id)
-        folder.manage_setLocalRoles(userid, local_roles)
+        api.user.grant_roles(username=userid,
+                             obj=folder,
+                             roles=local_roles)
         folder.__ac_local_roles_block__ = block
-        folder.reindexObject()
+        self._call_mut(folder)
         self.folders_by_path[path] = folder
 
     def _populate(self):
         self.folders_by_path = {}
         create_folder = self._create_folder
-        create_folder('/a', ['Reader'], userid='bob')
+        create_folder('/a', ['Reader'], userid='matt')
         create_folder('/a/b', ['Reader'])
-        create_folder('/a/b/c', ['Reader', 'Anonymous'])
-        create_folder('/a/b/c/a', ['Reader', 'Anonymous'])
-        create_folder('/a/b/c/d', ['Reader', 'Anonymous'])
-        create_folder('/a/b/c/e', ['Reader'], userid='jane', block=True)
+        create_folder('/a/b/c', ['Reader', 'Editor'])
+        create_folder('/a/b/c/a', ['Reader', 'Editor'])
+        create_folder('/a/b/c/d', ['Reader', 'Editor'])
+        create_folder('/a/b/c/e', ['Reader'], userid='liz', block=True)
         create_folder('/a/b/c/e/f', ['Reader'])
         create_folder('/a/b/c/e/f/g', ['Reviewer'])
 
@@ -54,6 +57,11 @@ class ARUIndexerTestsMixin(object):
     def _make_one(self, *args, **kw):
         cls = self._get_target_class()
         return cls(*args, **kw)
+
+    def _call_mut(self, obj, **kw):
+        catalog = api.portal.get_tool('portal_catalog')
+        adapter = self._make_one(obj, catalog)
+        adapter.reindexObjectSecurity()
 
     def _query(self, local_roles, operator='or'):
         pa_testing.logout()
@@ -81,18 +89,12 @@ class ARUIndexerTestsMixin(object):
         brains = self._query(local_roles, operator=search_operator)
         prefix = '/%s' % self.portal.getId()
         paths = set(brain.getPath().replace(prefix, '') for brain in brains)
-        self.assertEqual(sorted(paths), sorted(set(expected_paths)))
+        self.assertSetEqual(paths, set(expected_paths))
 
-    # TODO: we want the equiv of this, but check that shadow tree mirrors content tree.
-    # def _check_index(self, local_roles, expected, operator='or', dummy=None):
-    #     actual = set(self._query_index(local_roles, operator=operator))
-    #     self.assertEqual(actual, set(expected))
-    #     if dummy:
-    #         self._check_shadowtree_nodes_have_security_info(dummy)
-
-    def _effect_change(self, obj, userid, local_roles, block=False):
-        obj.manage_setLocalRoles(userid, local_roles)
-        obj.reindexObjectSecurity()
+    def _create_members(self, member_ids):
+        for member_id in member_ids:
+            email = '%s@plone.org' % member_id
+            api.user.create(username=member_id, email=email)
 
     def setUp(self):
         portal = self.portal
@@ -106,6 +108,10 @@ class ARUIndexerTestsMixin(object):
             email='querier-test-user@netsight.co.uk',
             username='querier-test-user'
         )
+        self._create_members(['matt', 'liz', 'guido'])
+        api.user.grant_roles(username='matt', roles=[
+            'Member', 'Contributor', 'Reader', 'Editor'
+        ])
         pa_testing.setRoles(self.portal,
                             self.query_user.getUserId(),
                             ['Manager'])
@@ -114,103 +120,172 @@ class ARUIndexerTestsMixin(object):
         self._populate()
         self._check_catalog(['user:' + self.query_user.getUserId()],
                             set())
-        self._check_catalog(['user:bob'], {
+        self._check_catalog(['user:matt'], {
             '/a',
             '/a/b',
             '/a/b/c',
             '/a/b/c/a',
             '/a/b/c/d',
         })
-        self._check_catalog(['user:jane'], {
+        self._check_catalog(['user:liz'], {
             '/a/b/c/e',
             '/a/b/c/e/f',
             '/a/b/c/e/f/g',
         })
         self._check_catalog(['Reviewer'], set())
+        self._check_catalog(['Editor'], set(self.folders_by_path))
         self._check_catalog(['Reader'], set(self.folders_by_path))
 
-    def test_shadowtree_integrity(self):
-        self._populate()
-        # get shadowtree from persistent storage
+    def _check_shadowtree_paths(self, expected_paths):
         from .. import shadowtree
         root = shadowtree.get_root()
-        shadow_paths = {node.physical_path for node in root.descendants()}
-        self.assertEqual(sorted(shadow_paths), [])
-        content_root = api.portal.get()['a']
-        content_root.reindexObjectSecurity()
-        shadow_paths = {node.physical_path for node in root.descendants()}
+        shadow_paths = {
+            node.physical_path
+            for node in root.descendants(ignore_block=True)
+        }
+        self.assertSetEqual(shadow_paths, expected_paths)
+
+    def test_shadowtree_integrity(self):
         catalog = api.portal.get_tool('portal_catalog')
-        self.assertEqual(sorted(shadow_paths),
-                         sorted(b.getPath().replace('/plone', '')
-                                for b in catalog.unrestrictedSearchResults()))
+        self._check_shadowtree_paths(set())
 
-    def test_reindexObjectSecurity(self):
         self._populate()
-        result = self._query_index(['Anonymous', 'Authenticated'],
-                                   operator='and')
-        self.assertEqual(list(result), [2, 3, 4, 5])
-        self._effect_change(
-            4,
-            _Dummy('/a/b/c/d', ['Anonymous', 'Authenticated', 'Editor'])
-        )
-        self._check_index(['Anonymous', 'Authenticated'],
-                          [2, 3, 4, 5],
-                          operator='and')
-        self._check_index(['Editor'], [4], operator='and')
-        self._effect_change(
-            2,
-            _Dummy('/a/b/c', ['Contributor'])
-        )
-        self._check_index(['Contributor'], {2})
-        self._check_index(['Anonymous', 'Authenticated'], {3, 4, 5},
-                          operator='and')
+        self._check_shadowtree_paths({
+            tuple(b.getPath().split('/'))
+            for b in catalog.unrestrictedSearchResults(path='/plone/a')
+        })
 
-    def test__index_object_on_change_recurse(self):
+        api.content.delete(self.portal['a']['b']['c']['d'])
+        self._check_shadowtree_paths({
+            tuple(b.getPath().split('/'))
+            for b in catalog.unrestrictedSearchResults(path='/plone/a')
+        })
+
+    def _private_content_with_default_workflow(self):
+        wftool = api.portal.get_tool('portal_workflow')
+        wftool.setDefaultChain('plone_workflow')
         self._populate()
-        self._values[2].aru = ['Contributor']
-        dummy = self._values[2]
-        zope.interface.alsoProvides(dummy, IDecendantLocalRolesAware)
-        self._effect_change(2, dummy)
-        self._check_index(['Contributor'], {2, 3, 4}, dummy=dummy)
-        self._check_index(['Anonymous', 'Authenticated'],
-                          {0, 1, 5, 6},
-                          dummy=dummy)
+        for obj in self.folders_by_path.values():
+            api.content.transition(obj, 'hide')
 
-    def test_reindex_no_change(self):
-        self._populate()
-        obj = self._values[7]
-        self._effect_change(7, obj)
-        self._check_index(['Reviewer'], {7})
-        self._effect_change(7, obj)
-        self._check_index(['Reviewer'], {7})
+        # Logout, check that Anonymous cannot access any contents.
+        pa_testing.logout()
+        catalog = api.portal.get_tool('portal_catalog')
+        brains = catalog.searchResults()
+        self.assertEqual(len(brains), 0)
 
-    def test_index_object_when_raising_attributeerror(self):
-        class FauxObject(_Dummy):
-            def allowedRolesAndUsers(self):
-                raise AttributeError
-        to_index = FauxObject('/a/b', ['Role'])
-        self._index.index_object(10, to_index)
-        self.assertFalse(self._index._unindex.get(10))
-        self.assertFalse(self._index.getEntryForObject(10))
+    def test_reindexObjectSecurity_on_workflow_transistion(self):
+        # transition an object to published
+        # check that children of object do not show up in catalog search results.
+        self._private_content_with_default_workflow()
+        
+        pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
+        api.content.transition(self.folders_by_path['/a'], 'show')
 
-    def test_index_object_when_raising_typeeror(self):
-        class FauxObject(_Dummy):
-            def allowedRolesAndUsers(self, name):
-                return 'allowedRolesAndUsers'
+        # Logout, check that we can access the item that's been shown and nothing else.
+        pa_testing.logout()
+        catalog = api.portal.get_tool('portal_catalog')
+        brains = catalog.searchResults()
+        self.assertEqual(brains[0].getPath(), '/plone/a')
 
-        to_index = FauxObject('/a/b', ['Role'])
-        self._index.index_object(10, to_index)
-        self.assertFalse(self._index._unindex.get(10))
-        self.assertFalse(self._index.getEntryForObject(10))
+    def test_reindexObjectSecurity_on_grant_roles(self):
+        pa_testing.login(self.portal, 'matt')
+        self._private_content_with_default_workflow()
 
-    def test_value_removes(self):
-        to_index = _Dummy('/a/b/c', ['hello'])
-        self._index.index_object(10, to_index)
-        self.assertIn(10, self._index._unindex)
+        pa_testing.login(self.portal, 'matt')
+        obj = self.folders_by_path['/a/b']
+        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])
+        self._call_mut(obj)
+        pa_testing.logout()
 
-        to_index = _Dummy('/a/b/c', [])
-        self._index.index_object(10, to_index)
-        self.assertNotIn(10, self._index._unindex)
+        pa_testing.login(self.portal, 'guido')
+        catalog = api.portal.get_tool('portal_catalog')
+        brains = catalog.searchResults()
+        actual = {b.getPath().replace('/plone', '') for b in brains}
+        self.assertTrue(actual)
+        self.assertSetEqual(actual, {
+            '/a/b',
+            '/a/b/c',
+            '/a/b/c/a',
+            '/a/b/c/d'
+        })
+
+    def test_reindexObjectSecurity_on_revoke_roles(self):
+        self._private_content_with_default_workflow()
+        pa_testing.logout()
+        pa_testing.login(self.portal, 'liz')
+        catalog = api.portal.get_tool('portal_catalog')
+        brains = catalog.searchResults()
+        actual = {b.getPath().replace('/plone', '') for b in brains}
+        self.assertTrue(actual)
+        self.assertSetEqual(actual, {
+            '/a/b/c/e',
+            '/a/b/c/e/f',
+            '/a/b/c/e/f/g'
+        })
+        
+        # Grant liz access to a node higher up
+        obj = self.folders_by_path['/a/b/c']
+        api.user.grant_roles(username='liz', obj=obj, roles=['Reader'])
+        self._call_mut(obj)
+
+        # Revoke liz's original access to e (and descendants)
+        obj = self.folders_by_path['/a/b/c/e']
+
+        api.user.revoke_roles(username='liz', obj=obj, roles=['Reader'])
+        self._call_mut(obj)
+
+        # Check liz can see everything under her granted access *up until a local role block*
+        brains = catalog.searchResults()
+        actual = {b.getPath().replace('/plone', '') for b in brains}
+        self.assertEqual(actual, {
+            '/a/b/c',
+            '/a/b/c/a',
+            '/a/b/c/d'
+        })
+
+    def test_reindexObjectSecurity_on_local_role_block_removal(self):
+        self._private_content_with_default_workflow()
+        obj = self.folders_by_path['/a']
+        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])        
+        self._call_mut(obj)
+        pa_testing.logout()
+
+        pa_testing.login(self.portal, 'guido')
+        catalog = api.portal.get_tool('portal_catalog')
+        brains = catalog.searchResults()
+        actual = {b.getPath().replace('/plone', '') for b in brains}
+        self.assertTrue(actual)
+        self.assertSetEqual(actual, {
+            '/a',
+            '/a/b',
+            '/a/b/c',
+            '/a/b/c/a',
+            '/a/b/c/d'
+        })
+        pa_testing.logout()
+
+        pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
+        obj = self.folders_by_path['/a/b/c/e']
+        obj.__ac_local_roles_block__ = None
+        self._call_mut(obj)
+        pa_testing.logout()
+
+        pa_testing.login(self.portal, 'guido')
+        brains = catalog.searchResults()
+        actual = {b.getPath().replace('/plone', '') for b in brains}
+        self.assertSetEqual(actual, set(self.folders_by_path))
+
+
+class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
+
+    layer = testing.AT_INTEGRATION
+
+
+class TestARUIndexerATPatched(TestARUIndexerAT):
+
+    def _call_mut(self, obj, **kw):
+        obj.reindexObjectSecurity(**kw)
 
 
 class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
@@ -223,9 +298,10 @@ class TestARUIndexerDX(ARUIndexerTestsMixin, unittest.TestCase):
         api.content.delete(obj=self.portal['robot-test-folder'])
 
 
-class TestARUIndexerAT(ARUIndexerTestsMixin, unittest.TestCase):
+class TestARUIndexerDXPatched(TestARUIndexerDX):
 
-    layer = testing.AT_INTEGRATION
+    def _call_mut(self, obj, **kw):
+        obj.reindexObjectSecurity(**kw)
 
 
 if __name__ == '__main__':
