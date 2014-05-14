@@ -22,6 +22,7 @@ def on_object_added(obj, event):
     if indexable is not None:
         root = shadowtree.get_root()
         node = root.ensure_ancestry_to(obj)
+        assert node.physical_path == obj.getPhysicalPath()
         node.update_security_info(indexable)
 
 
