@@ -1,0 +1,23 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    xmlns:monkey="http://namespaces.plone.org/monkey"
+    i18n_domain="experimental.securityindexing">
+
+  <include package="collective.monkeypatcher" />
+
+  <monkey:patch
+      description="Optimise efficiency of reindexObjectSecurity for Archetypes objects."
+      class="Products.Archetypes.CatalogMultiplex.CatalogMultiplex"
+      original="reindexObjectSecurity"
+      replacement=".patches.at_reindexObjectSecurity"
+      />
+
+  <monkey:patch
+      description="Optimise efficiency of reindexObjectSecurity for Dexterity objects."
+      class="Products.CMFCore.CMFCatalogAware.CatalogAware"
+      original="reindexObjectSecurity"
+      replacement=".patches.dx_reindexObjectSecurity"
+      />
+
+</configure>

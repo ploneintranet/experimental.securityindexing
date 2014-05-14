@@ -11,6 +11,8 @@
 
   <grok:grok package="." />
 
+  <include file="patches.zcml" />
+
   <genericsetup:registerProfile
     name="default"
     title="Installs securityindexing optimisations"
@@ -26,5 +28,5 @@
     description="Extension profile"
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
-  
+ 
 </configure>

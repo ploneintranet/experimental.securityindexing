@@ -23,7 +23,7 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
     of packages is performed.
     """
     n_wide = 10
-    n_deep = 5
+    n_deep = 4
 
     def _sanity_checks(self):
         raise NotImplementedError()
