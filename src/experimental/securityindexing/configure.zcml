@@ -1,25 +1,29 @@
 <configure
     xmlns="http://namespaces.zope.org/zope"
-    xmlns:i18n="http://namespaces.zope.org/i18n"
     xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:grok="http://namespaces.zope.org/grok"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
     xmlns:plone="http://namespaces.plone.org/plone"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
     i18n_domain="experimental.securityindexing">
 
   <includeDependencies package="." />
-
-  <!-- <adapter -->
-  <!--   for="Products.CMFCore.interfaces.IContentish -->
-  <!--        Products.CMFCore.interfaces.ICatalogAware" -->
-  <!--   provides="Products.CMFCore.interfaces.ICatalogAware" -->
-  <!--   name="allowedUsersAndRoles" -->
-  <!--   /> -->
+  <grok:grok package="." />
 
   <genericsetup:registerProfile
     name="default"
-    title="A package for Plone which provlides adapters for optimising"
+    title="Installs securityindexing optimisations"
     directory="profiles/default"
-    description="Extension profile for A package for Plone which provlides adapters for optimising"
+    description="Extension profile"
     provides="Products.GenericSetup.interfaces.EXTENSION"
-   />
+    />
 
+  <genericsetup:registerProfile
+    name="uninstall"
+    title="Uninstalls securityindexing optimisations"
+    directory="profiles/uninstall"
+    description="Extension profile"
+    provides="Products.GenericSetup.interfaces.EXTENSION"
+    />
+  
 </configure>

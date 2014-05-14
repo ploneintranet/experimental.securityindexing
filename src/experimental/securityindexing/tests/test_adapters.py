@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 
 from plone import api
@@ -30,20 +31,22 @@ class ARUIndexerTestsMixin(object):
         folder = api.content.create(container=parent,
                                     type='Folder',
                                     id=id)
-        folder.manage_setLocalRoles(userid, local_roles)
+        api.user.grant_roles(username=userid,
+                             obj=folder,
+                             roles=local_roles)
         folder.__ac_local_roles_block__ = block
-        folder.reindexObject()
+        folder.indexObject()
         self.folders_by_path[path] = folder
 
     def _populate(self):
         self.folders_by_path = {}
         create_folder = self._create_folder
-        create_folder('/a', ['Reader'], userid='bob')
+        create_folder('/a', ['Reader'], userid='matt')
         create_folder('/a/b', ['Reader'])
-        create_folder('/a/b/c', ['Reader', 'Anonymous'])
-        create_folder('/a/b/c/a', ['Reader', 'Anonymous'])
-        create_folder('/a/b/c/d', ['Reader', 'Anonymous'])
-        create_folder('/a/b/c/e', ['Reader'], userid='jane', block=True)
+        create_folder('/a/b/c', ['Reader', 'Editor'])
+        create_folder('/a/b/c/a', ['Reader', 'Editor'])
+        create_folder('/a/b/c/d', ['Reader', 'Editor'])
+        create_folder('/a/b/c/e', ['Reader'], userid='liz', block=True)
         create_folder('/a/b/c/e/f', ['Reader'])
         create_folder('/a/b/c/e/f/g', ['Reviewer'])
 
@@ -81,18 +84,17 @@ class ARUIndexerTestsMixin(object):
         brains = self._query(local_roles, operator=search_operator)
         prefix = '/%s' % self.portal.getId()
         paths = set(brain.getPath().replace(prefix, '') for brain in brains)
-        self.assertEqual(sorted(paths), sorted(set(expected_paths)))
+        self.assertSetEqual(paths, set(expected_paths))
 
-    # TODO: we want the equiv of this, but check that shadow tree mirrors content tree.
-    # def _check_index(self, local_roles, expected, operator='or', dummy=None):
-    #     actual = set(self._query_index(local_roles, operator=operator))
-    #     self.assertEqual(actual, set(expected))
-    #     if dummy:
-    #         self._check_shadowtree_nodes_have_security_info(dummy)
+    def _reindex_object_security(self, obj):
+        catalog = api.portal.get_tool('portal_catalog')
+        adapter = self._make_one(obj, catalog)
+        adapter.reindexObjectSecurity()
 
-    def _effect_change(self, obj, userid, local_roles, block=False):
-        obj.manage_setLocalRoles(userid, local_roles)
-        obj.reindexObjectSecurity()
+    def _create_members(self, member_ids):
+        for member_id in member_ids:
+            email = '%s@plone.org' % member_id
+            api.user.create(username=member_id, email=email)
 
     def setUp(self):
         portal = self.portal
@@ -106,6 +108,7 @@ class ARUIndexerTestsMixin(object):
             email='querier-test-user@netsight.co.uk',
             username='querier-test-user'
         )
+        self._create_members(['matt', 'liz', 'guido'])
         pa_testing.setRoles(self.portal,
                             self.query_user.getUserId(),
                             ['Manager'])
@@ -114,41 +117,68 @@ class ARUIndexerTestsMixin(object):
         self._populate()
         self._check_catalog(['user:' + self.query_user.getUserId()],
                             set())
-        self._check_catalog(['user:bob'], {
+        self._check_catalog(['user:matt'], {
             '/a',
             '/a/b',
             '/a/b/c',
             '/a/b/c/a',
             '/a/b/c/d',
         })
-        self._check_catalog(['user:jane'], {
+        self._check_catalog(['user:liz'], {
             '/a/b/c/e',
             '/a/b/c/e/f',
             '/a/b/c/e/f/g',
         })
         self._check_catalog(['Reviewer'], set())
+        self._check_catalog(['Editor'], set(self.folders_by_path))
         self._check_catalog(['Reader'], set(self.folders_by_path))
 
-    def test_shadowtree_integrity(self):
-        self._populate()
-        # get shadowtree from persistent storage
+    def _check_shadowtree_paths(self, expected_paths):
         from .. import shadowtree
         root = shadowtree.get_root()
-        shadow_paths = {node.physical_path for node in root.descendants()}
-        self.assertEqual(sorted(shadow_paths), [])
-        content_root = api.portal.get()['a']
-        content_root.reindexObjectSecurity()
-        shadow_paths = {node.physical_path for node in root.descendants()}
+        shadow_paths = {
+            node.physical_path
+            for node in root.descendants(ignore_block=True)
+        }
+        self.assertSetEqual(shadow_paths, expected_paths)
+
+    def test_shadowtree_integrity(self):
         catalog = api.portal.get_tool('portal_catalog')
-        self.assertEqual(sorted(shadow_paths),
-                         sorted(b.getPath().replace('/plone', '')
-                                for b in catalog.unrestrictedSearchResults()))
+        self._check_shadowtree_paths(set())
+
+        self._populate()
+        self._check_shadowtree_paths({
+            tuple(b.getPath().split('/'))
+            for b in catalog.unrestrictedSearchResults(path='/plone/a')
+        })
+
+        api.content.delete(self.portal['a']['b']['c']['d'])
+        self._check_shadowtree_paths({
+            tuple(b.getPath().split('/'))
+            for b in catalog.unrestrictedSearchResults(path='/plone/a')
+        })
 
     def test_reindexObjectSecurity(self):
         self._populate()
-        result = self._query_index(['Anonymous', 'Authenticated'],
-                                   operator='and')
-        self.assertEqual(list(result), [2, 3, 4, 5])
+        paths = {
+            '/a',
+            '/a/b',
+            '/a/b/c',
+            '/a/b/c/a',
+            '/a/b/c/d'
+        }
+        self._check_catalog(['user:matt'], paths)
+        obj = self.folders_by_path['/a/b/c/d']
+        api.user.revoke_roles(username='matt',
+                              obj=obj,
+                              roles=['Reader', 'Editor'])
+        api.user.grant_roles(username='liz',
+                             obj=obj,
+                             roles=['Contributor'])
+        self._reindex_object_security(obj)
+        self._check_catalog(['user:liz'], paths)
+        self._check_catalog(['user:matt'], paths - {'/a/b/c/d'})
+        return
         self._effect_change(
             4,
             _Dummy('/a/b/c/d', ['Anonymous', 'Authenticated', 'Editor'])
