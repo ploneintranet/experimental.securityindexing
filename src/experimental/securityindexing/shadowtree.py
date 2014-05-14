@@ -7,6 +7,7 @@ an index to make decisions when indexing.
 from __future__ import print_function
 
 import BTrees
+import zope.interface
 from persistent import Persistent
 from plone import api
 from zope.annotation.interfaces import IAnnotations
@@ -32,6 +33,7 @@ def get_root():
     return root
 
 
+@zope.interface.implementer(BTrees.Interfaces.IDictionaryIsh)
 class Node(Persistent):
     """A Node corresponding to a content item in the a Zope instance.
     """
@@ -48,7 +50,7 @@ class Node(Persistent):
         self.id = id
         self.__parent__ = parent
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return '%s("%s")' % (type(self).__name__, self.id)
 
     def __getattr__(self, name):
@@ -77,11 +79,13 @@ class Node(Persistent):
     def __len__(self):
         return len(self._data)
 
-    def __nonzero__(self):
-        return bool(self._data)
-
     def __iter__(self):
         return iter(self._data)
+
+    def __bool__(self):
+        return True
+
+    __nonzero__ = __bool__
 
     @staticmethod
     def _get_path_components(obj):

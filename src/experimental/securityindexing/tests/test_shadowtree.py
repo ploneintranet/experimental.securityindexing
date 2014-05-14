@@ -2,6 +2,8 @@ import unittest
 
 import mock
 
+from BTrees.Interfaces import IDictionaryIsh
+from zope.interface.verify import verifyObject
 
 _PORTAL_ID = 'plone'
 
@@ -17,19 +19,16 @@ class _Dummy(object):
     # TODO: This class should probably define __ac_local_roles__
     #       to more closely simulate real plone objects.
 
-    def __str__(self):
-        return '<Dummy: %s>' % self.id
+    def __repr__(self):  # pragma: no cover
+        return '_Dummy(%s)' % self.id
 
-    __repr__ = __str__
+    __str__ = __repr__  # pragma: no cover
 
     def getId(self):
         return self.id
 
     def getPhysicalPath(self):
         return tuple(self.path.split('/'))
-
-    def allowedRolesAndUsers(self):
-        return self.aru
 
 
 class TestShadowTreeNode(unittest.TestCase):
@@ -61,6 +60,32 @@ class TestShadowTreeNode(unittest.TestCase):
 
     def tearDown(self):
         self.plone_api_patcher.stop()
+
+    def test_interface_conformant(self):
+        verifyObject(IDictionaryIsh, self._make_one())
+
+    def test__nonzero__(self):
+        root = self._make_one()
+        self.assertTrue(root)
+        self.assertTrue(self._make_one(id='foo'))
+        self.assertTrue(self._make_one(id='foo', parent=root))
+
+    def test__len__(self):
+        root = self._make_one()
+        self.assertEqual(len(root), 0)
+        names = ('a', 'b', 'c', 'd')
+        for name in names:
+            root[name] = self._make_one(id=name, parent=root)
+        self.assertEqual(len(root), len(names))
+        root['a']['b'] = self._make_one(id='x', parent=root['a'])
+        self.assertEqual(len(root), len(names))
+        self.assertEqual(len(root['a']), 1)
+
+    def test__iter__(self):
+        root = self._make_one()
+        self.assertEqual(list(iter(root)), [])
+        root['a'] = self._make_one(id='a', parent=root)
+        self.assertEqual(list(iter(root)), ['a'])
 
     def test_create_security_token_on_attributeerror(self):
         local_roles = {'Role1', 'Role2'}
