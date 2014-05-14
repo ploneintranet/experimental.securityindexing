@@ -1,0 +1,26 @@
+[run]
+branch = False
+source = experimental.securityindexing
+omit =
+    *.pt.py
+    */setup.py
+    */*/benchmarks.py
+    buildout-cache/*
+    eggs/*
+    parts/*
+
+[report]
+exclude_lines =
+    \s+pragma: no cover
+    assert
+    raise AssertionError
+    raise NotImplementedError
+    @abc.abstractmethod
+    def __repr__
+    if __name__ == .__main__.:
+show_missing = True
+ignore_errors = True
+
+[html]
+directory = var/coverage/html
+
