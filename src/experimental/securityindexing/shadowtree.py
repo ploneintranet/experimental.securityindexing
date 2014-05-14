@@ -14,8 +14,7 @@ from zope.annotation.interfaces import IAnnotations
 
 _marker = object()
 
-# TODO: we'll need to split this function up in order
-#       to clear the shadow tree in the GS uninstall profile.
+
 def get_root():
     """Gets the root shadow tree.
 
@@ -23,6 +22,8 @@ def get_root():
     created.
     """
     # TODO: This annotated storage needs to be deleted upon product uninstall
+    #       We'll need to split this function up in order
+    #       to clear the shadow tree in the GS uninstall profile.
     storage = IAnnotations(api.portal.get())
     root = storage.get(__package__)
     if root is None:
@@ -93,16 +94,16 @@ class Node(Persistent):
     def create_security_token(cls, obj):
         """Create a security token for `obj`.
 
-        We use the return value of `acl_users._getAllLocalRoles` 
+        We use the return value of `acl_users._getAllLocalRoles`
         as for hashing, since its desired to use all parent local roles.
 
         `allowedRolesUsers` is not used, as  sometimes the sequence does
-        not contain the full set of local roles, since shortcuts are utilised 
-        for certain cases, e.g: 
-                
+        not contain the full set of local roles, since shortcuts are utilised
+        for certain cases, e.g:
+
           * Anonymous
           * Authenticated
-        
+
         :param cls: The type of this node.
         :type cls: experimental.localrolesindex.shadowtree.Node
         :param obj: The content item.
@@ -112,9 +113,10 @@ class Node(Persistent):
         """
         acl_users = api.portal.get_tool('acl_users')
         ac_local_roles = acl_users._getAllLocalRoles(obj)
-        local_roles = tuple((k, frozenset(v)) for (k, v) in ac_local_roles.items())
+        local_roles = tuple((k, frozenset(v))
+                            for (k, v) in ac_local_roles.items())
         return hash(local_roles)
-    
+
     @staticmethod
     def get_local_roles_block(obj):
         return getattr(obj, '__ac_local_roles_block__', False)

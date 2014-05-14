@@ -114,5 +114,3 @@ DX_INTEGRATION = pa_testing.IntegrationTesting(
     bases=(DX_FIXTURE,),
     name='DXIntegrationLayer:Integration'
 )
-
-
