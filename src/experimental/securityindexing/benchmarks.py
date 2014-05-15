@@ -32,6 +32,7 @@ def timed(func):
         return elapsed
     return timer
 
+
 def profile(func):
     @functools.wraps(func)
     def _do_profile(*args, **kw):
@@ -41,11 +42,14 @@ def profile(func):
             result = func(*args, **kw)
         finally:
             prof.disable()
-            path = '/tmp/%s-%s-%s' % (func.__module__, func.__name__, os.getpid())
+            path = '/tmp/%s-%s-%s' % (
+                func.__module__,
+                func.__name__, os.getpid()
+            )
             prof.dump_stats(path)
         return result
     return _do_profile
-                
+
 
 @contextlib.contextmanager
 def catalog_disabled():
