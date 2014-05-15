@@ -16,6 +16,16 @@ from zope.annotation.interfaces import IAnnotations
 _marker = object()
 
 
+def _get_storage():
+    return IAnnotations(api.portal.get())
+
+
+def destroy():
+    storage = _get_storage()
+    if __package__ in storage:
+        del storage[__package__]
+
+
 def get_root():
     """Gets the root shadow tree.
 
@@ -25,7 +35,7 @@ def get_root():
     # TODO: This annotated storage needs to be deleted upon product uninstall
     #       We'll need to split this function up in order
     #       to clear the shadow tree in the GS uninstall profile.
-    storage = IAnnotations(api.portal.get())
+    storage = _get_storage()
     root = storage.get(__package__)
     if root is None:
         root = Node()
