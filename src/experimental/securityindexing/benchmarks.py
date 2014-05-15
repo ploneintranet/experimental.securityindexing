@@ -2,8 +2,10 @@ from __future__ import print_function
 import collections
 import contextlib
 import csv
+import cProfile
 import datetime
 import functools
+import os
 import unittest
 import string
 import time
@@ -30,6 +32,20 @@ def timed(func):
         return elapsed
     return timer
 
+def profile(func):
+    @functools.wraps(func)
+    def _do_profile(*args, **kw):
+        prof = cProfile.Profile()
+        try:
+            prof.enable()
+            result = func(*args, **kw)
+        finally:
+            prof.disable()
+            path = '/tmp/%s-%s-%s' % (func.__module__, func.__name__, os.getpid())
+            prof.dump_stats(path)
+        return result
+    return _do_profile
+                
 
 @contextlib.contextmanager
 def catalog_disabled():
@@ -82,8 +98,8 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
     Ensures that a tree of content is created after installation
     of packages is performed.
     """
-    n_wide = 2
-    n_deep = 2
+    n_wide = 5
+    n_deep = 5
 
     def _sanity_checks(self):
         raise NotImplementedError()
@@ -92,11 +108,13 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
         super(BenchmarkLayer, self).setUpPloneSite(portal)
+        wftool = api.portal.get_tool('portal_workflow')
+        wftool.setDefaultChain('simple_publication_workflow')
         self.top = api.content.create(api.portal.get(),
                                       id='bench-root',
                                       type='Folder')
-        with testing.catalog_disabled():
-            testing.create_content_tree(self.top, self.n_wide, self.n_deep)
+        with catalog_disabled():
+            create_content_tree(self.top, self.n_wide, self.n_deep)
         catalog = api.portal.get_tool('portal_catalog')
         catalog.clearFindAndRebuild()
         self._sanity_checks()
@@ -182,9 +200,10 @@ class BenchTestMixin(object):
         with open(self.results_path, 'a') as fp:
             writer = csv.DictWriter(fp, list(row))
             writer.writerow(row)
+        print(row)
 
     def _call_mut(self, obj, *args, **kw):
-        method = testing.timed(obj.reindexObjectSecurity)
+        method = timed(obj.reindexObjectSecurity)
         return method(*args, **kw)
 
     def _get_obj(self, path=''):
