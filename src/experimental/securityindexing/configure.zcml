@@ -43,7 +43,7 @@
     />
 
   <utility 
-    factory=".utilities.ShadowTree"
+    factory=".utilities.ShadowTreeTool"
     provides=".interfaces.IShadowTree"
   />
  

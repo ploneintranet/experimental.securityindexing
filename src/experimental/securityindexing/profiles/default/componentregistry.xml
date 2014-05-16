@@ -2,7 +2,7 @@
 <componentregistry>
  <utilities>
   <utility
-    interface="experimental.securityindexing.interfaces.IShadowTree"
+    interface="experimental.securityindexing.interfaces.IShadowTreeTool"
     object="portal_shadowtree"
   />
  </utilities>

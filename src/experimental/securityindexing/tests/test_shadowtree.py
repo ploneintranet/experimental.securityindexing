@@ -4,20 +4,11 @@ import mock
 
 from BTrees.Interfaces import IMinimalDictionary
 from persistent.interfaces import IPersistent
-from zope.annotation.interfaces import IAnnotations
-from zope.interface import implementer
 from zope.interface.verify import verifyClass, verifyObject
 
+from .utils import FakePlonePortal
 
 _PORTAL_ID = 'plone'
-
-
-@implementer(IAnnotations)
-class FakePlonePortal(dict):
-    """A fake Plone portal object for testing purposes."""
-
-    def getId(self):
-        return _PORTAL_ID
 
 
 class _Dummy(object):
@@ -106,32 +97,17 @@ class TestShadowTreeNode(unittest.TestCase):
         root['a'] = self._make_one(id='a', parent=root)
         self.assertEqual(list(iter(root)), ['a'])
 
+    def test__getattr__(self):
+        root = self._make_one()
+        with self.assertRaises(AttributeError):
+            root.foo
+        # check some OOBTree attributes are found
+        self.assertTrue(getattr(root, 'keys', None))
+        self.assertTrue(getattr(root, 'minKey', None))
+        getattr(root, '__pkey__')
+
     def test_interface_conformance(self):
         self._check_interface_conformance(self._make_one())
-
-    def test_create_root(self):
-        context = self._fake_portal
-        Node = self._get_target_class()
-        root = Node.create_root(context=context)
-        root2 = Node.create_root(context=context)
-        self.assertIs(root, root2)
-        self._check_interface_conformance(Node.get_root(context=context))
-
-    def test_get_root(self):
-        context = self._fake_portal
-        Node = self._get_target_class()
-        root = Node.get_root(context=context)
-        self.assertIsInstance(root, Node)
-        self.assertEqual(root.id, '')
-        self.assertIsNone(root.__parent__)
-        self.assertIs(Node.get_root(context=context), root)
-
-    def test_delete_root(self):
-        context = self._fake_portal
-        Node = self._get_target_class()
-        self.assertFalse(Node.delete_root(context=context))
-        Node.create_root(context=context)
-        self.assertTrue(Node.delete_root(context=context))
 
     def test_create_security_token_on_attributeerror(self):
         local_roles = {'Role1', 'Role2'}

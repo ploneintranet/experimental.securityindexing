@@ -4,13 +4,10 @@ A shadow tree mirrors the Portal content tree in a Zope/Plone site,
 each node storing security identifiers in order to enablable
 an index to make decisions when indexing.
 """
-from __future__ import print_function
-
 import BTrees
 from persistent import Persistent
 from plone import api
 from zope import interface
-from zope.annotation.interfaces import IAnnotations
 
 from .interfaces import IShadowTree
 
@@ -83,54 +80,6 @@ class Node(Persistent):
         path_components = obj.getPhysicalPath()
         portal_path_idx = path_components.index(portal_id) + 1
         return tuple(path_components[portal_path_idx:])
-
-    @staticmethod
-    def _get_storage(context=None):
-        # Allow context to be passed in for testing purposes.
-        if context is None:
-            context = api.portal.get()  # pragma: no cover
-        return IAnnotations(context)
-
-    @classmethod
-    def delete_root(cls, context=None):
-        """Delete the root node.
-
-        :param context: The object use for annotation storage.
-                        This is to allow for unit-testing.
-        :type context: persistent.Persistent
-        """
-        storage = cls._get_storage(context=context)
-        if cls.__pkey__ in storage:
-            del storage[cls.__pkey__]
-            return True
-        return False
-
-    @classmethod
-    def create_root(cls, context=None):
-        """Creates the persistent root node.
-
-        Raises `EnvironmentError` if the root node already exists.
-
-        :param context: The object use for annotation storage.
-                        This is to allow for unit-testing.
-        :type context: persistent.Persistent
-        """
-        storage = cls._get_storage(context=context)
-        return storage.setdefault(cls.__pkey__, cls())
-
-    @classmethod
-    def get_root(cls, context=None):
-        """Gets the root shadow tree.
-
-        Raises KeyError is the root node has not yet been
-        created.
-
-        :param context: The context to retrieve the storage from,
-                        used for testing purposes.
-        :returns: The root node of the shadowtree.
-        :rtype: experimental.securityindexing.shadowtre e.Node
-        """
-        return cls.create_root(context=context)
 
     @classmethod
     def create_security_token(cls, obj):

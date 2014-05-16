@@ -10,4 +10,9 @@ class IObjectSecurity(zope.interface.Interface):
 
 
 class IShadowTree(BTrees.Interfaces.IMinimalDictionary):
-    """Marker."""
+    """A shadow tree node."""
+
+
+class IShadowTreeTool(zope.interface.Interface):
+
+    root = zope.interface.Attribute('The root node of the shadow tree')
