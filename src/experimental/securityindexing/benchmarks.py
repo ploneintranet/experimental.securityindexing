@@ -60,6 +60,8 @@ def catalog_disabled():
 
 
 def create_content_tree(parent, nwide, ndeep,
+                        commit_interval=500,
+                        total=0,
                         level=0, verbose=False):
     """Recursively create a tree of content.
 
@@ -84,6 +86,7 @@ def create_content_tree(parent, nwide, ndeep,
         folder = api.content.create(container=parent,
                                     type='Folder',
                                     id=fid)
+        total += 1
         siblings.append(folder)
         count += 1
     if verbose:
@@ -91,8 +94,13 @@ def create_content_tree(parent, nwide, ndeep,
         print(' ' * level, ', '.join(s.getId() for s in siblings))
     level += 1
     for sibling in siblings:
-        count += create_content_tree(sibling, nwide, ndeep,
-                                     level=level, verbose=verbose)
+        count += create_content_tree(sibling, nwide, ndeep, 
+                                     commit_interval,
+                                     total=total,
+                                     level=level, 
+                                     verbose=verbose)
+        if total % commit_interval == 0:
+            transaction.commit()
     return count
 
 
@@ -102,7 +110,7 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
     Ensures that a tree of content is created after installation
     of packages is performed.
     """
-    n_wide = 5
+    n_wide = 7
     n_deep = 5
 
     def _sanity_checks(self):
@@ -148,6 +156,8 @@ class VanillaATBenchLayer(BenchmarkLayer):
     This layer installs no additional addons.
     """
 
+    defaultBases = (pa_testing.PLONE_FIXTURE,)
+
     def _sanity_checks(self):
         assert self.top.meta_type.startswith('ATFolder')
 
@@ -158,27 +168,27 @@ class InstalledATBenchLayer(testing.SecurityIndexingLayerMixin,
 
 
 DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
-DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
+DX_VANILLA_INTEGRATION = pa_testing.FunctionalTesting(
     bases=(DX_VANILLA_FIXTURE,),
-    name='VanillaDXLayer:Integration'
+    name='VanillaDXLayer:Functional'
 )
 
 DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
-DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
+DX_INSTALLED_INTEGRATION = pa_testing.FunctionalTesting(
     bases=(DX_INSTALLED_FIXTURE,),
-    name='InstalledDXLayer:Integration'
+    name='InstalledDXLayer:Functional'
 )
 
 AT_VANILLA_FIXTURE = VanillaATBenchLayer()
-AT_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
+AT_VANILLA_INTEGRATION = pa_testing.FunctionalTesting(
     bases=(AT_VANILLA_FIXTURE,),
-    name='VanillaATLayer:Integration'
+    name='VanillaATLayer:Functional'
 )
 
 AT_INSTALLED_FIXTURE = InstalledATBenchLayer()
-AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
+AT_INSTALLED_INTEGRATION = pa_testing.FunctionalTesting(
     bases=(AT_INSTALLED_FIXTURE,),
-    name='InstalledATLayer:Integration'
+    name='InstalledATLayer:Functional'
 )
 
 
@@ -213,10 +223,39 @@ class BenchTestMixin(object):
     def _get_obj(self, path=''):
         return api.content.get('/plone/bench-root' + path)
 
-    def test_reindexObjectSecurity_from_root(self):
+    def test_reindexObjectSecurity_from_root_nochange(self):
         subject = self._get_obj()
         duration = self._call_mut(subject)
         self._write_result(duration)
+
+    def test_reindexObjectSecurity_from_root_wfchange(self):
+        subject = self._get_obj()
+        api.content.transition(subject, 'publish')
+        duration = self._call_mut(subject)
+        self._write_result(duration)
+
+    def test_reindexObjectSecurity_from_root_lrchange(self):
+        subject = self._get_obj()
+        api.user.create(username='bob',
+                        email='bob@example.com')
+        api.user.grant_roles(username='bob',
+                             obj=subject,
+                             roles=['Reader'])
+        duration = self._call_mut(subject)
+        self._write_result(duration)
+
+    def test_reindexObjectSecurity_from_root_lrchange_with_lrblock(self):
+        subject = self._get_obj()
+        api.user.create(username='bob',
+                        email='bob@example.com')
+        api.user.grant_roles(username='bob',
+                             obj=subject,
+                             roles=['Reader'])
+        blocked = subject['a']
+        blocked.__ac_local_roles_block__ = True
+        self._call_mut(blocked)
+        duration = self._call_mut(subject)
+        self._write_result(duration)        
 
 
 class VanillaDXBenchTest(BenchTestMixin, unittest.TestCase):
