@@ -16,6 +16,7 @@ from plone.app.contenttypes.testing import PLONE_APP_CONTENTTYPES_FIXTURE
 from plone.app.event.testing import PAEvent_FIXTURE
 import pkg_resources
 import plone.app.testing as pa_testing
+import transaction
 
 from . import testing
 
@@ -94,10 +95,10 @@ def create_content_tree(parent, nwide, ndeep,
         print(' ' * level, ', '.join(s.getId() for s in siblings))
     level += 1
     for sibling in siblings:
-        count += create_content_tree(sibling, nwide, ndeep, 
+        count += create_content_tree(sibling, nwide, ndeep,
                                      commit_interval,
                                      total=total,
-                                     level=level, 
+                                     level=level,
                                      verbose=verbose)
         if total % commit_interval == 0:
             transaction.commit()
@@ -255,7 +256,7 @@ class BenchTestMixin(object):
         blocked.__ac_local_roles_block__ = True
         self._call_mut(blocked)
         duration = self._call_mut(subject)
-        self._write_result(duration)        
+        self._write_result(duration)
 
 
 class VanillaDXBenchTest(BenchTestMixin, unittest.TestCase):
