@@ -13,7 +13,7 @@ import time
 from Products.CMFCore.CMFCatalogAware import CMFCatalogAware
 from plone import api
 from plone.app.contenttypes.testing import PLONE_APP_CONTENTTYPES_FIXTURE
-from plone.app.event.testing import PAEvent_FIXTURE
+from plone.testing import z2
 import pkg_resources
 import plone.app.testing as pa_testing
 import transaction
@@ -111,8 +111,8 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
     Ensures that a tree of content is created after installation
     of packages is performed.
     """
-    n_wide = 7
-    n_deep = 5
+    n_wide = 2
+    n_deep = 2
 
     def _sanity_checks(self):
         raise NotImplementedError()
@@ -121,9 +121,10 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
         super(BenchmarkLayer, self).setUpPloneSite(portal)
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
+        super(BenchmarkLayer, self).setUpPloneSite(portal)
         wftool = api.portal.get_tool('portal_workflow')
         wftool.setDefaultChain('simple_publication_workflow')
-        self.top = api.content.create(portal,
+        self.top = api.content.create(api.portal.get(),
                                       id='bench-root',
                                       type='Folder')
         with catalog_disabled():
@@ -136,9 +137,10 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
 class VanillaDXBenchLayer(BenchmarkLayer):
     """A layer which ensure Dexteity is used for the default content types."""
 
-    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE,
-                    PAEvent_FIXTURE,
-                    pa_testing.PLONE_FIXTURE)
+    defaultBases = (
+        PLONE_APP_CONTENTTYPES_FIXTURE,
+        pa_testing.PLONE_FIXTURE
+    )
 
     def _sanity_checks(self):
         assert self.top.meta_type.startswith('Dexterity')
@@ -169,27 +171,27 @@ class InstalledATBenchLayer(testing.SecurityIndexingLayerMixin,
 
 
 AT_VANILLA_FIXTURE = VanillaATBenchLayer()
-AT_VANILLA_INTEGRATION = pa_testing.FunctionalTesting(
-    bases=(AT_VANILLA_FIXTURE,),
-    name='B_VanillaATLayer:Integration'
+AT_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_VANILLA_FIXTURE, z2.ZSERVER_FIXTURE),
+    name='%s.B_VanillaATLayer:Integration' % __package__
 )
 
 AT_INSTALLED_FIXTURE = InstalledATBenchLayer()
-AT_INSTALLED_INTEGRATION = pa_testing.FunctionalTesting(
-    bases=(AT_INSTALLED_FIXTURE,),
-    name='B_InstalledATLayer:Integration'
+AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_INSTALLED_FIXTURE, z2.ZSERVER_FIXTURE),
+    name='%s.B_InstalledATLayer:Integration' % __package__
 )
 
 DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
 DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_VANILLA_FIXTURE,),
-    name='A_VanillaDXLayer:Integration'
+    bases=(DX_VANILLA_FIXTURE, z2.ZSERVER_FIXTURE),
+    name='%s.A_VanillaDXLayer:Integration' % __package__
 )
 
 DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
 DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_INSTALLED_FIXTURE,),
-    name='A_InstalledDXLayer:Integration'
+    bases=(DX_INSTALLED_FIXTURE, z2.ZSERVER_FIXTURE),
+    name='%s.A_InstalledDXLayer:Integration' % __package__
 )
 
 
