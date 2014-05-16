@@ -1,8 +1,8 @@
-.. image:: https://api.travis-ci.org/netsight/experimental.securityindexing.png
-  :target: https://travis-ci.org/netsight/experimental.securityindexing
+.. image:: https://api.travis-ci.org/ploneintranet/experimental.securityindexing.png
+  :target: https://travis-ci.org/ploneintranet/experimental.securityindexing
 
-.. image:: https://coveralls.io/repos/netsight/experimental.securityindexing/badge.png
-  :target: https://coveralls.io/r/netsight/experimental.securityindexing
+.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png
+  :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing
 
 
 =============================
@@ -100,7 +100,13 @@ The following scheme was envisioned to optimise the above algorithm:
     2.4 Index each node in group, supplying a faux object (either the shadow node or some other 
         object standing-in for the content object)
 
+Credit
+======
+This work has been done as part of the `Plone Intranet project <http://github.com/ploneintranet>`_. 
+Work sponsored by `Netsight <http://www.netsight.co.uk>`_.
+
+
     
 :author: Matt Russell <mattr@netsight.co.uk>
 :date-created: 2014-05-04
-:date-modified: 2014-05-14
+:date-modified: 2014-05-16
