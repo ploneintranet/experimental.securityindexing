@@ -102,8 +102,8 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
     Ensures that a tree of content is created after installation
     of packages is performed.
     """
-    n_wide = 5
-    n_deep = 5
+    n_wide = 2
+    n_deep = 2
 
     def _sanity_checks(self):
         raise NotImplementedError()

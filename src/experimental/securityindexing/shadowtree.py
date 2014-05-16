@@ -7,47 +7,27 @@ an index to make decisions when indexing.
 from __future__ import print_function
 
 import BTrees
-import zope.interface
 from persistent import Persistent
 from plone import api
+from zope import interface
 from zope.annotation.interfaces import IAnnotations
+
+from .interfaces import IShadowTree
 
 
 _marker = object()
 
 
-def _get_storage():
-    return IAnnotations(api.portal.get())
-
-
-def destroy():
-    storage = _get_storage()
-    if __package__ in storage:
-        del storage[__package__]
-
-
-def get_root():
-    """Gets the root shadow tree.
-
-    Creates the root node if one hasn't previously been
-    created.
-    """
-    # TODO: This annotated storage needs to be deleted upon product uninstall
-    #       We'll need to split this function up in order
-    #       to clear the shadow tree in the GS uninstall profile.
-    storage = _get_storage()
-    root = storage.get(__package__)
-    if root is None:
-        root = Node()
-        storage[__package__] = root
-    return root
-
-
-@zope.interface.implementer(BTrees.Interfaces.IDictionaryIsh)
+@interface.implementer(IShadowTree)
 class Node(Persistent):
-    """A Node corresponding to a content item in the a Zope instance.
-    """
+    """A Node corresponding to an item in the content tree."""
+
     __parent__ = None
+    "The parent node"
+
+    __pkey__ = __package__
+    "Persistent key for Zope Annotation storage"
+
     id = None
     block_inherit_roles = False
     token = None
@@ -103,6 +83,54 @@ class Node(Persistent):
         path_components = obj.getPhysicalPath()
         portal_path_idx = path_components.index(portal_id) + 1
         return tuple(path_components[portal_path_idx:])
+
+    @staticmethod
+    def _get_storage(context=None):
+        # Allow context to be passed in for testing purposes.
+        if context is None:
+            context = api.portal.get()  # pragma: no cover
+        return IAnnotations(context)
+
+    @classmethod
+    def delete_root(cls, context=None):
+        """Delete the root node.
+
+        :param context: The object use for annotation storage.
+                        This is to allow for unit-testing.
+        :type context: persistent.Persistent
+        """
+        storage = cls._get_storage(context=context)
+        if cls.__pkey__ in storage:
+            del storage[cls.__pkey__]
+            return True
+        return False
+
+    @classmethod
+    def create_root(cls, context=None):
+        """Creates the persistent root node.
+
+        Raises `EnvironmentError` if the root node already exists.
+
+        :param context: The object use for annotation storage.
+                        This is to allow for unit-testing.
+        :type context: persistent.Persistent
+        """
+        storage = cls._get_storage(context=context)
+        return storage.setdefault(cls.__pkey__, cls())
+
+    @classmethod
+    def get_root(cls, context=None):
+        """Gets the root shadow tree.
+
+        Raises KeyError is the root node has not yet been
+        created.
+
+        :param context: The context to retrieve the storage from,
+                        used for testing purposes.
+        :returns: The root node of the shadowtree.
+        :rtype: experimental.securityindexing.shadowtre e.Node
+        """
+        return cls.create_root(context=context)
 
     @classmethod
     def create_security_token(cls, obj):
@@ -174,7 +202,7 @@ class Node(Persistent):
 
         Optionally yields nodes that have local roles blocked.
 
-        :param ignore_block: If False and a node has block_local_roles set
+        :param ignore_block: If False and a node has block_local_roles setpl
                              to True, do not descend to any of its children.
         """
         for node in self.values():

@@ -48,7 +48,7 @@ class ObjectSecurityTestsMixin(object):
     def _check_shadowtree_nodes_have_security_info(self):
         portal_id = self.portal.getId()
         for (path, obj) in sorted(self.folders_by_path.items(), key=len):
-            node = shadowtree.get_root()
+            node = shadowtree.Node.get_root()
             path_components = list(filter(bool, obj.getPhysicalPath()))
             path_components.remove(portal_id)
             for path_component in path_components:
@@ -139,7 +139,7 @@ class ObjectSecurityTestsMixin(object):
         self._check_catalog(['Reader'], set(self.folders_by_path))
 
     def _check_shadowtree_paths(self, expected_paths):
-        root = shadowtree.get_root()
+        root = shadowtree.Node.get_root()
         shadow_paths = {
             node.physical_path
             for node in root.descendants(ignore_block=True)

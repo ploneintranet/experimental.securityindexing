@@ -1,7 +1,13 @@
+import BTrees
 import zope.interface
 
 
-class IARUIndexer(zope.interface.Interface):
+class IObjectSecurity(zope.interface.Interface):
+    """Defines a efficient re-indexing operation."""
 
-    def reindexObjectSecurity(obj, skip_self=False):
+    def reindex():
         """Reindex object security."""
+
+
+class IShadowTree(BTrees.Interfaces.IMinimalDictionary):
+    """Marker."""

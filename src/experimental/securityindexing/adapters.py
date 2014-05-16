@@ -43,10 +43,6 @@ is as follows:
  1. Record the security token (hashed  value of all local roles)
     before and after re-indexing the current context.
 
-TODO: if skip_self is True, we should not re-index ourselves,
-      but then what to do about descendants? [1]
-
- TODO: revise (2.) with respect to the above TODO [1]
  2. Re-index our context, as we need to do this regardless of changes
     as this might have been a workflow change, and hence
     allowedRolesAndUsers may have changed.
@@ -106,9 +102,12 @@ Considerations
 import collections
 
 from Products.CMFCore.interfaces import IIndexableObject
-from zope.component import getMultiAdapter
+from Products.CMFPlone.interfaces import IPloneSiteRoot
+from five import grok
+from zope import component, interface
 
 from . import shadowtree
+from .interfaces import IObjectSecurity, IShadowTree
 
 
 class _IndexableContentishProxy(object):
@@ -131,25 +130,26 @@ class _IndexableContentishProxy(object):
         return self._path_components
 
 
+@interface.implementer(IObjectSecurity)
 class ObjectSecurity(object):
-    """Manage reindexing object security of the `allowedRolesAndUsers` index.
-    """
+    """Manage reindexing security of the `allowedRolesAndUsers` index."""
 
     _index_ids = ('allowedRolesAndUsers',)
 
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
-        self._shadowtree = shadowtree.get_root()
+        self._shadowtree = shadowtree.Node.get_root()
 
     def _reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
         reindex(obj, idxs=self._index_ids, update_metadata=0)
 
     def _to_indexable(self, obj):
-        return getMultiAdapter((obj, self.catalog_tool), IIndexableObject)
+        return component.getMultiAdapter((obj, self.catalog_tool),
+                                         IIndexableObject)
 
-    def reindex(self, skip_self=False):
+    def reindex(self):
         """Reindex the contents of `allowedRolesAndUsers` index.
 
         Potentially reindex descendant objects in the content tree.
@@ -161,8 +161,6 @@ class ObjectSecurity(object):
         """
         node = self._shadowtree.ensure_ancestry_to(self.context)
         token_before = node.token
-        # TODO: if skip_self is True, we should not reindex ourselfs,
-        #       but then what to do about descendants?
         self._reindex_object(self.context)
         node.update_security_info(self.context)
         token_after = node.token
@@ -183,3 +181,5 @@ class ObjectSecurity(object):
                 for node in nodes_group:
                     content_proxy = _IndexableContentishProxy(aru, node)
                     self._reindex_object(content_proxy)
+
+
