@@ -18,5 +18,7 @@ class ShadowTree(object):
             self._root = shadowtree.Node.create_root(context=portal)
         return self._root
 
-    def delete_root(self, portal):
+    @root.deleter
+    def root(self):
+        portal = api.portal.get()
         shadowtree.Node.delete_root(context=portal)

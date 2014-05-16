@@ -3,7 +3,8 @@ import unittest
 from plone import api
 import plone.app.testing as pa_testing
 
-from .. import shadowtree, testing
+from .. import testing
+from ..interfaces import IShadowTree
 
 
 class ObjectSecurityTestsMixin(object):
@@ -33,7 +34,14 @@ class ObjectSecurityTestsMixin(object):
         self._call_mut(folder)
         self.folders_by_path[path] = folder
 
+    def _get_shadowtree_root(self):
+        portal = api.portal.get()
+        st = portal.getSiteManager().getUtility(IShadowTree)
+        return st.root
+
     def _populate(self):
+        st_root = self._get_shadowtree_root()
+        st_root.clear()
         self.folders_by_path = {}
         create_folder = self._create_folder
         create_folder('/a', ['Reader'], userid='matt')
@@ -48,9 +56,9 @@ class ObjectSecurityTestsMixin(object):
     def _check_shadowtree_nodes_have_security_info(self):
         portal_id = self.portal.getId()
         for (path, obj) in sorted(self.folders_by_path.items(), key=len):
-            node = shadowtree.Node.get_root()
             path_components = list(filter(bool, obj.getPhysicalPath()))
             path_components.remove(portal_id)
+            node = self._get_shadowtree_root()
             for path_component in path_components:
                 node = node[path_component]
                 self.assertTrue(hasattr(node, 'block_inherit_roles'))
@@ -138,8 +146,7 @@ class ObjectSecurityTestsMixin(object):
         self._check_catalog(['Editor'], set(self.folders_by_path))
         self._check_catalog(['Reader'], set(self.folders_by_path))
 
-    def _check_shadowtree_paths(self, expected_paths):
-        root = shadowtree.Node.get_root()
+    def _check_shadowtree_paths(self, root, expected_paths):
         shadow_paths = {
             node.physical_path
             for node in root.descendants(ignore_block=True)
@@ -148,16 +155,17 @@ class ObjectSecurityTestsMixin(object):
 
     def test_shadowtree_integrity(self):
         catalog = api.portal.get_tool('portal_catalog')
-        self._check_shadowtree_paths(set())
-
+        st_root = self._get_shadowtree_root()
+        st_root.clear()
+        self._check_shadowtree_paths(st_root, set())
         self._populate()
-        self._check_shadowtree_paths({
+        self._check_shadowtree_paths(st_root, {
             tuple(b.getPath().split('/'))
             for b in catalog.unrestrictedSearchResults(path='/plone/a')
         })
 
         api.content.delete(self.portal['a']['b']['c']['d'])
-        self._check_shadowtree_paths({
+        self._check_shadowtree_paths(st_root, {
             tuple(b.getPath().split('/'))
             for b in catalog.unrestrictedSearchResults(path='/plone/a')
         })

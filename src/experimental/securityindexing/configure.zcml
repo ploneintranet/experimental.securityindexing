@@ -22,15 +22,6 @@
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
 
-  <genericsetup:importStep
-    name="experimental.securityindexing.shadowtree.create_root"
-    title="experimental.securityindexing: Creates peristent shadowtree storage."
-    description="Provides a shadowtree that holds security infomation
-    		 correspoding to items in the main content tree, used for making descisions
-		 about optimisation of re-indexing of the `allowedRolesAndUsers` KeywordIndex."
-    handler=".setuphandlers.create_shadowtree"
-    />
-
   <genericsetup:registerProfile
     name="uninstall"
     title="experimental.securityindexing: uninstall"
@@ -39,8 +30,21 @@
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
 
+  <subscriber
+    for="Products.CMFCore.interfaces.IContentish
+         zope.lifecycleevent.interfaces.IObjectAddedEvent"
+    handler=".subscribers.on_object_added"
+    />
+
+  <subscriber
+    for="Products.CMFCore.interfaces.IContentish
+         zope.lifecycleevent.interfaces.IObjectRemovedEvent"
+    handler=".subscribers.on_object_removed"
+    />
+
   <utility 
-    factory=".utilities.ShadowTree" 
+    factory=".utilities.ShadowTree"
+    provides=".interfaces.IShadowTree"
   />
  
 </configure>

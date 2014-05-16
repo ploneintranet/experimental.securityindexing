@@ -1,16 +1,18 @@
 from Products.CMFCore.interfaces import IContentish
 from five import grok
-from zope import component
+from plone import api
 from zope.lifecycleevent.interfaces import (
-    IObjectAddedEvent,
-    IObjectRemovedEvent
+    IObjectAddedEvent, IObjectRemovedEvent
 )
 
 from .interfaces import IShadowTree
 
 
 def _shadowtree_node_for_content(obj):
-    shadowtree = component.getUtility(IShadowTree)
+    # shadowtree = component.getUtility(IShadowTre e)
+    portal = api.portal.get()
+    site = portal.getSiteManager()
+    shadowtree = site.getUtility(IShadowTree)
     root = shadowtree.root
     node = root.ensure_ancestry_to(obj)
     return node

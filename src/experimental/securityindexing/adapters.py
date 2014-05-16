@@ -102,6 +102,7 @@ Considerations
 import collections
 
 from Products.CMFCore.interfaces import IIndexableObject
+from plone import api
 from zope import component, interface
 
 from .interfaces import IObjectSecurity, IShadowTree
@@ -136,7 +137,8 @@ class ObjectSecurity(object):
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
-        self._shadowtree = component.getUtility(IShadowTree)
+        portal = api.portal.get()
+        self._shadowtree = portal.getSiteManager().getUtility(IShadowTree)
 
     def _reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
@@ -159,7 +161,8 @@ class ObjectSecurity(object):
         reindex_object = self._reindex_object
         to_indexable = self._to_indexable
         traverse = self.context.unrestrictedTraverse
-        node = self._shadowtree.ensure_ancestry_to(self.context)
+        root = self._shadowtree.root
+        node = root.ensure_ancestry_to(self.context)
         token_before = node.token
         reindex_object(self.context)
         node.update_security_info(self.context)
@@ -171,8 +174,7 @@ class ObjectSecurity(object):
                 shared_tokens[descendant.token].append(descendant)
             for (old_token, nodes_group) in shared_tokens.items():
                 first_node = next(iter(nodes_group))
-                first_path = '/'.join(first_node.physical_path)
-                first_obj = traverse(first_path)
+                first_obj = traverse(first_node.physical_path)
                 indexable = to_indexable(first_obj)
                 aru = indexable.allowedRolesAndUsers
                 for node in nodes_group:

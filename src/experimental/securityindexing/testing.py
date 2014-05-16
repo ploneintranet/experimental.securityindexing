@@ -1,5 +1,4 @@
 from plone.app.contenttypes.testing import PLONE_APP_CONTENTTYPES_FIXTURE
-from plone.app.event.testing import PAEvent_FIXTURE
 import plone.app.testing as pa_testing
 
 
@@ -20,8 +19,8 @@ class SecurityIndexingLayerMixin(object):
         self.applyProfile(portal, 'experimental.securityindexing:default')
 
     def tearDownPloneSite(self, portal):
-        super(SecurityIndexingLayerMixin, self).tearDownPloneSite(portal)
         self.applyProfile(portal, 'experimental.securityindexing:uninstall')
+        super(SecurityIndexingLayerMixin, self).tearDownPloneSite(portal)
 
 
 class ATIntegrationLayer(SecurityIndexingLayerMixin,
@@ -37,7 +36,6 @@ class DXIntegrationLayer(SecurityIndexingLayerMixin,
 
     defaultBases = (
         PLONE_APP_CONTENTTYPES_FIXTURE,
-        PAEvent_FIXTURE,
         pa_testing.PLONE_FIXTURE
     )
 
@@ -45,11 +43,11 @@ class DXIntegrationLayer(SecurityIndexingLayerMixin,
 AT_FIXTURE = ATIntegrationLayer()
 AT_INTEGRATION = pa_testing.IntegrationTesting(
     bases=(AT_FIXTURE,),
-    name='%s.ATIntegrationLayer:Integration' % __package__
+    name='%s.B_ATIntegrationLayer:Integration' % __package__
 )
 
 DX_FIXTURE = DXIntegrationLayer()
 DX_INTEGRATION = pa_testing.IntegrationTesting(
     bases=(DX_FIXTURE,),
-    name='%s.DXIntegrationLayer:Integration' % __package__
+    name='%s.A_DXIntegrationLayer:Integration' % __package__
 )

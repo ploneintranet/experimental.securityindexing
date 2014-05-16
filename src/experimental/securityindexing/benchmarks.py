@@ -109,12 +109,12 @@ class BenchmarkLayer(pa_testing.PloneSandboxLayer):
         raise NotImplementedError()
 
     def setUpPloneSite(self, portal):
+        super(BenchmarkLayer, self).setUpPloneSite(portal)
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
-        super(BenchmarkLayer, self).setUpPloneSite(portal)
         wftool = api.portal.get_tool('portal_workflow')
         wftool.setDefaultChain('simple_publication_workflow')
-        self.top = api.content.create(api.portal.get(),
+        self.top = api.content.create(portal,
                                       id='bench-root',
                                       type='Folder')
         with catalog_disabled():
@@ -157,28 +157,28 @@ class InstalledATBenchLayer(testing.SecurityIndexingLayerMixin,
     """A benchmark layer this addon package installed."""
 
 
-DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
-DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_VANILLA_FIXTURE,),
-    name='VanillaDXLayer:Integration'
-)
-
-DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
-DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_INSTALLED_FIXTURE,),
-    name='InstalledDXLayer:Integration'
-)
-
 AT_VANILLA_FIXTURE = VanillaATBenchLayer()
 AT_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
     bases=(AT_VANILLA_FIXTURE,),
-    name='VanillaATLayer:Integration'
+    name='B_VanillaATLayer:Integration'
 )
 
 AT_INSTALLED_FIXTURE = InstalledATBenchLayer()
 AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
     bases=(AT_INSTALLED_FIXTURE,),
-    name='InstalledATLayer:Integration'
+    name='B_InstalledATLayer:Integration'
+)
+
+DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
+DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_VANILLA_FIXTURE,),
+    name='A_VanillaDXLayer:Integration'
+)
+
+DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
+DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_INSTALLED_FIXTURE,),
+    name='A_InstalledDXLayer:Integration'
 )
 
 
@@ -215,6 +215,7 @@ class BenchTestMixin(object):
 
     def test_reindexObjectSecurity_from_root(self):
         subject = self._get_obj()
+        assert subject is not None
         duration = self._call_mut(subject)
         self._write_result(duration)
 
