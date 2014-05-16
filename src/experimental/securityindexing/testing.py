@@ -1,16 +1,10 @@
 from plone.app.contenttypes.testing import PLONE_APP_CONTENTTYPES_FIXTURE
 from plone.app.event.testing import PAEvent_FIXTURE
-from plone.testing import z2
 import plone.app.testing as pa_testing
 
 
 class SecurityIndexingLayerMixin(object):
     """Mixin for layers."""
-
-    def _check_shadowtree_deleted(self, app):
-        from . import shadowtree
-        storage = shadowtree.Node._get_storage(context=app.plone)
-        assert __package__ not in storage, list(storage.keys())
 
     def setUpZope(self, app, configuration_context):
         super(SecurityIndexingLayerMixin, self).setUpZope(
@@ -20,11 +14,6 @@ class SecurityIndexingLayerMixin(object):
         import experimental.securityindexing as package
         self.loadZCML(package=package,
                       context=configuration_context)
-
-    def tearDownZope(self, app):
-        super(SecurityIndexingLayerMixin, self).tearDownZope(app)
-        z2.uninstallProduct(app, 'experimental.securityindexing')
-        self._check_shadowtree_deleted(app)
 
     def setUpPloneSite(self, portal):
         super(SecurityIndexingLayerMixin, self).setUpPloneSite(portal)
