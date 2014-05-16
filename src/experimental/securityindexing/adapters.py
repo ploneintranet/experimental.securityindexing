@@ -102,16 +102,13 @@ Considerations
 import collections
 
 from Products.CMFCore.interfaces import IIndexableObject
-from Products.CMFPlone.interfaces import IPloneSiteRoot
-from five import grok
 from zope import component, interface
 
-from . import shadowtree
 from .interfaces import IObjectSecurity, IShadowTree
 
 
 class _IndexableContentishProxy(object):
-    """A lightweight 'proxy' object.
+    """A lightweight content proxy object.
 
     This is stand-in for an item of content,
     which implements the bare minimum functionality
@@ -139,7 +136,7 @@ class ObjectSecurity(object):
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
-        self._shadowtree = shadowtree.Node.get_root()
+        self._shadowtree = component.getUtility(IShadowTree)
 
     def _reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
@@ -159,27 +156,25 @@ class ObjectSecurity(object):
         this method can make descisions regarding which descendants need
         to be re-indexed.
         """
+        reindex_object = self._reindex_object
+        to_indexable = self._to_indexable
+        traverse = self.context.unrestrictedTraverse
         node = self._shadowtree.ensure_ancestry_to(self.context)
         token_before = node.token
-        self._reindex_object(self.context)
+        reindex_object(self.context)
         node.update_security_info(self.context)
         token_after = node.token
         if token_before != token_after:
             shared_tokens = collections.defaultdict(list)
             shared_tokens[node.token].append(node)
-
             for descendant in node.descendants(ignore_block=False):
                 shared_tokens[descendant.token].append(descendant)
-
-            traverse = self.context.unrestrictedTraverse
             for (old_token, nodes_group) in shared_tokens.items():
                 first_node = next(iter(nodes_group))
                 first_path = '/'.join(first_node.physical_path)
                 first_obj = traverse(first_path)
-                indexable = self._to_indexable(first_obj)
+                indexable = to_indexable(first_obj)
                 aru = indexable.allowedRolesAndUsers
                 for node in nodes_group:
                     content_proxy = _IndexableContentishProxy(aru, node)
-                    self._reindex_object(content_proxy)
-
-
+                    reindex_object(content_proxy)
