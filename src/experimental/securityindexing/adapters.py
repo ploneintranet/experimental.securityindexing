@@ -105,7 +105,7 @@ from Products.CMFCore.interfaces import IIndexableObject
 from plone import api
 from zope import component, interface
 
-from .interfaces import IObjectSecurity, IShadowTree
+from .interfaces import IObjectSecurity, IShadowTreeTool
 
 
 class _IndexableContentishProxy(object):
@@ -138,7 +138,8 @@ class ObjectSecurity(object):
         self.context = context
         self.catalog_tool = catalog_tool
         portal = api.portal.get()
-        self._shadowtree = portal.getSiteManager().getUtility(IShadowTree)
+        sm = portal.getSiteManager()
+        self._shadowtree = sm.getUtility(IShadowTreeTool)
 
     def _reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
