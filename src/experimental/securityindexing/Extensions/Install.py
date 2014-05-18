@@ -8,7 +8,7 @@ import experimental.securityindexing.utilities as esu
 
 
 def uninstall(portal, reinstall=False):
-    if reinstall:
+    if reinstall:  # pragma: no cover
         return
     pkg_name = esu.__package__
     logger = logging.getLogger(pkg_name)
@@ -18,7 +18,7 @@ def uninstall(portal, reinstall=False):
     out.write(msg)
     try:
         esu.ShadowTreeTool.delete_from_storage(portal)
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         out.write(b'failed (traceback follows):')
         out.write(e)
         logger.exception(e)

@@ -125,4 +125,4 @@ class IShadowTreeTool(interface.Interface):
     root = interface.Attribute(u'The root node of the shadow tree')
 
     def delete_from_storage(portal):
-        """Delete the shadowtree root and all it's data from the portal."""
+        u"""Delete the shadowtree root and all it's data from the portal."""
