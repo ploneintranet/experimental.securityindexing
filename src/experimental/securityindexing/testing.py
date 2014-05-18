@@ -114,7 +114,7 @@ class TestCaseMixin(object):
         if exclude in expected_paths:
             expected_paths.remove(exclude)
         # exclude folders created by other fixtures (p.a.event in this case)
-        #shadow_paths.remove(('', 'plone', 'robot-test-folder'))
+        # shadow_paths.remove(('', 'plone', 'robot-test-folder'))
         self.assertSetEqual(shadow_paths, expected_paths)
 
     def _check_shadowtree_nodes_have_security_info(self):
