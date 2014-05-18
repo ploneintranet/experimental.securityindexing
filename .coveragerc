@@ -18,7 +18,7 @@ exclude_lines =
     def __repr__
     if __name__ == .__main__.:
 show_missing = True
-ignore_errors = True
+ignore_errors = False
 
 [html]
 directory = var/coverage/html

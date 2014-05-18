@@ -33,7 +33,7 @@ class IShadowTreeNode(interface.Interface):
         if IShadowTreeRoot.providedBy(node):
             return
         if node.__parent__ is None or not node.id:
-            raise Invalid('A node must be contained within the shadowtree.')
+            raise Invalid(b'A node must be contained within the shadowtree.')
 
     def create_security_token(obj):
         u"""Create a security token for `obj`.
@@ -125,4 +125,4 @@ class IShadowTreeTool(interface.Interface):
     root = interface.Attribute(u'The root node of the shadow tree')
 
     def delete_from_storage(portal):
-        """Delete the shadowtree root and all it's data from the portal."""
+        u"""Delete the shadowtree root and all it's data from the portal."""

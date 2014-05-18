@@ -2,9 +2,6 @@ import unittest
 
 import mock
 
-from persistent.interfaces import IPersistent
-from zope.interface.verify import verifyClass, verifyObject
-
 from .utils import FakePlonePortal
 
 
@@ -50,13 +47,9 @@ class TestShadowTreeNode(unittest.TestCase):
         from ..shadowtree import Node
         return Node
 
-    def _make_one(self, *args, **kw):
-        from zope import interface
-        from ..interfaces import IShadowTreeRoot
+    def _make_one(self, asroot=True, *args, **kw):
         cls = self._get_target_class()
         node = cls(*args, **kw)
-        if not args or kw:
-            interface.alsoProvides(node, IShadowTreeRoot)
         return node
 
     def _create_security_token(self, obj, expected_type=int):
@@ -106,21 +99,44 @@ class TestShadowTreeNode(unittest.TestCase):
 
     def test_interface_conformance(self):
         import BTrees
-        from zope.interface.exceptions import Invalid
-        from ..interfaces import IShadowTreeNode
+        from zope import interface
+        from zope.interface.verify import verifyClass, verifyObject
+        from zope.interface.exceptions import DoesNotImplement, Invalid
+        from ..interfaces import IShadowTreeNode, IShadowTreeRoot
+
+        # Default node creation
         Node = self._get_target_class()
         verifyClass(IShadowTreeNode, Node)
+
+        # Creating a node with no id or parent implies
+        # intent to create the root node.
         node = self._make_one()
         verifyObject(IShadowTreeNode, node)
-        verifyObject(IPersistent, node)
         verifyObject(BTrees.Interfaces.IBTree, node)
-        errors = []
-        try:
-            IShadowTreeNode.validateInvariants(node, errors)
-        except Invalid as invalid:
-            pass
-        if errors:
-            self.fail(invalid)
+
+        # Regular nodes must be contained.
+        with self.assertRaises(Invalid):
+            IShadowTreeNode.validateInvariants(node)
+
+        # Utiltiies that provide the root node
+        # should declare they do so...
+        with self.assertRaises(DoesNotImplement):
+            verifyObject(IShadowTreeRoot, node)
+
+        # root node must have empty ids.
+        root = self._make_one(id='ROOTME.')
+        with self.assertRaises(Invalid):
+            IShadowTreeRoot.validateInvariants(root)
+
+        root = self._make_one()
+        interface.alsoProvides(root, IShadowTreeRoot)
+        verifyObject(IShadowTreeRoot, root)
+        IShadowTreeRoot.validateInvariants(root)
+
+        node = self._make_one(id='a1', parent=root)
+        IShadowTreeNode.validateInvariants(node)
+        with self.assertRaises(Invalid):
+            IShadowTreeRoot.validateInvariants(node)
 
     def test_create_security_token_on_attributeerror(self):
         local_roles = {b'Role1', b'Role2'}
@@ -158,7 +174,7 @@ class TestShadowTreeNode(unittest.TestCase):
 
     def test_update_security_info(self):
         root = self._make_one()
-        node = self._make_one(b'foobar', parent=root)
+        node = self._make_one(id=b'foobar', parent=root)
         self.assertEqual(node.id, b'foobar')
         self.assertIs(node.__parent__, root)
         self.assertIsNone(node.token)

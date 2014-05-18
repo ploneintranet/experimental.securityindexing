@@ -1,8 +1,6 @@
 import unittest
 
 import mock
-from zope.interface.exceptions import Invalid
-from zope.interface.verify import verifyClass, verifyObject
 
 from .utils import FakePlonePortal
 
@@ -35,15 +33,12 @@ class TestShadowTreeTool(unittest.TestCase):
         return utility()
 
     def test_interface_conformance(self):
+        from zope.interface.verify import verifyClass, verifyObject
         from ..interfaces import IShadowTreeTool
         verifyClass(IShadowTreeTool, self._get_target_class())
         util = self._make_one()
         verifyObject(IShadowTreeTool, util)
-        errors = []
-        try:
-            IShadowTreeTool.validateInvariants(util, errors)
-        except Invalid as invalid:
-            self.fail(invalid)
+        IShadowTreeTool.validateInvariants(util)
 
     def test_root(self):
         from ..interfaces import IShadowTreeRoot
