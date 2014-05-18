@@ -9,7 +9,7 @@
     i18n_domain="experimental.securityindexing">
 
   <includeDependencies package="." />
-
+  <five:registerPackage package="." initialize=".initialize" />
   <grok:grok package="." />
 
   <include file="patches.zcml" />
@@ -42,9 +42,7 @@
     handler=".subscribers.on_object_removed"
     />
 
-  <utility 
-    factory=".utilities.ShadowTreeTool"
-    provides=".interfaces.IShadowTree"
-  />
+  <!-- Site-local utility -->
+  <utility factory=".utilities.ShadowTreeTool" />
  
 </configure>
