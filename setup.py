@@ -14,16 +14,14 @@
 
 from setuptools import setup, find_packages
 
-_DESCRIPTION = """\
-A package for Plone which provlides adapters for optimising
-indexing of security information for content objects.
-"""
 
 setup(name='experimental.securityindexing',
       version='0.1dev',
-      url='https://github.com/wengole/experimental.securityindexing',
+      url='https://github.com/ploneintranet/experimental.securityindexing',
       license='ZPL 2.1',
-      description=_DESCRIPTION,
+      description="""\
+      Optimises indexing of object security for a Plone site.
+      """,
       author='Netsight Internet Solutions',
       author_email='dev@netsight.co.uk',
       long_description=(
@@ -35,21 +33,25 @@ setup(name='experimental.securityindexing',
       package_dir={'': 'src'},
       install_requires=[
           'setuptools',
-          'plone.api',
-          'plone.app.dexterity[grok]'
+          'five.grok',
+          'plone.api'
       ],
       extras_require={
           'test': [
               'mock',
-              'plone.app.contenttypes',
-              'plone.app.event',
-              'plone.app.robotframework',
-              'plone.app.testing'
+              'plone.app.testing',
+              'plone.app.contenttypes[test]',
+              'plone.app.event[test]'
           ],
           'dexterity': [
               'plone.app.contenttypes',
-              'plone.app.event',
-              'five.grok'
+              'plone.app.dexterity[grok]',
+              'plone.app.event'
+          ],
+          'benchmarks': [
+              # 'click',
+              # 'matplotlib',
+              # 'numpy'
           ]
       },
       entry_points="""
