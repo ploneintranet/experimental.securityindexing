@@ -1,10 +1,10 @@
 import unittest
 
 import mock
-from zope.interface.verify import verifyObject
+from zope.interface.exceptions import Invalid
+from zope.interface.verify import verifyClass, verifyObject
 
 from .utils import FakePlonePortal
-from ..interfaces import IShadowTree, IShadowTreeTool
 
 
 class TestShadowTreeTool(unittest.TestCase):
@@ -35,9 +35,29 @@ class TestShadowTreeTool(unittest.TestCase):
         return utility()
 
     def test_interface_conformance(self):
+        from ..interfaces import IShadowTreeTool
+        verifyClass(IShadowTreeTool, self._get_target_class())
         util = self._make_one()
         verifyObject(IShadowTreeTool, util)
+        errors = []
+        try:
+            IShadowTreeTool.validateInvariants(util, errors)
+        except Invalid as invalid:
+            self.fail(invalid)
 
     def test_root(self):
+        from ..interfaces import IShadowTreeRoot
         util = self._make_one()
-        self.assertTrue(IShadowTree.providedBy(util.root))
+        self.assertTrue(IShadowTreeRoot.providedBy(util.root))
+
+    def test_delete_from_storage(self):
+        tool_cls = self._get_target_class()
+        storage = tool_cls._get_storage(portal=self._fake_portal)
+
+        # ensure the root node is stored.
+        self._make_one().root
+        self.assertIn('experimental.securityindexing', storage)
+
+        # check it's gone when it's supposed to be.
+        tool_cls.delete_from_storage(self._fake_portal)
+        self.assertNotIn('experimental.securityindexing', storage)

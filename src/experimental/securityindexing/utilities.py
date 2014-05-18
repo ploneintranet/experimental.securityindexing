@@ -3,22 +3,34 @@ from zope import interface
 from zope.annotation.interfaces import IAnnotations
 
 from . import shadowtree
-from .interfaces import IShadowTreeTool
+from .interfaces import IShadowTreeRoot, IShadowTreeTool
 
 
 @interface.implementer(IShadowTreeTool)
 class ShadowTreeTool(object):
 
-    def __init__(self):
-        self._root = None
+    _pkey = __package__
 
-    def _get_storage(self):
-        return IAnnotations(api.portal.get())
+    @staticmethod
+    def _get_storage(portal=None):
+        if portal is None:
+            portal = api.portal.get()
+        return IAnnotations(portal)
+
+    @classmethod
+    def delete_from_storage(cls, portal):
+        u"""Delete the shadownode tree from persistent storage.
+
+        :param portal: The Plone site portal object.
+        """
+        storage = cls._get_storage(portal=portal)
+        if cls._pkey in storage:
+            del storage[cls._pkey]
 
     @property
     def root(self):
-        if self._root is None:
-            storage = self._get_storage()
-            self._root = shadowtree.Node()
-            storage[__package__] = self._root
-        return self._root
+        u"""Lazily return the root node if it's not yet been created."""
+        storage = self._get_storage()
+        root_node = storage.setdefault(self._pkey, shadowtree.Node())
+        interface.alsoProvides(root_node, IShadowTreeRoot)
+        return root_node

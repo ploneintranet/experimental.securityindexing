@@ -1,70 +1,14 @@
 import unittest
 
 from plone import api
+from zope.interface.verify import verifyObject, verifyClass
 import plone.app.testing as pa_testing
 
 from .. import testing
-from ..interfaces import IShadowTree
+from ..interfaces import IObjectSecurity
 
 
-class ObjectSecurityTestsMixin(object):
-    """Tests for ObjectSecurityIndexer Adapter."""
-
-    @property
-    def portal(self):
-        return self.layer['portal']
-
-    def _create_folder(self, path, local_roles,
-                       userid=pa_testing.TEST_USER_ID,
-                       block=None):
-        id = path.split('/')[-1]
-        parent_path = filter(bool, path.split('/')[:-1])
-        if parent_path:
-            obj_path = '/%s' % '/'.join(parent_path)
-            parent = api.content.get(path=obj_path)
-        else:
-            parent = self.portal
-        folder = api.content.create(container=parent,
-                                    type='Folder',
-                                    id=id)
-        api.user.grant_roles(username=userid,
-                             obj=folder,
-                             roles=local_roles)
-        folder.__ac_local_roles_block__ = block
-        self._call_mut(folder)
-        self.folders_by_path[path] = folder
-
-    def _get_shadowtree_root(self):
-        portal = api.portal.get()
-        st = portal.getSiteManager().getUtility(IShadowTree)
-        return st.root
-
-    def _populate(self):
-        st_root = self._get_shadowtree_root()
-        st_root.clear()
-        self.folders_by_path = {}
-        create_folder = self._create_folder
-        create_folder('/a', ['Reader'], userid='matt')
-        create_folder('/a/b', ['Reader'])
-        create_folder('/a/b/c', ['Reader', 'Editor'])
-        create_folder('/a/b/c/a', ['Reader', 'Editor'])
-        create_folder('/a/b/c/d', ['Reader', 'Editor'])
-        create_folder('/a/b/c/e', ['Reader'], userid='liz', block=True)
-        create_folder('/a/b/c/e/f', ['Reader'])
-        create_folder('/a/b/c/e/f/g', ['Reviewer'])
-
-    def _check_shadowtree_nodes_have_security_info(self):
-        portal_id = self.portal.getId()
-        for (path, obj) in sorted(self.folders_by_path.items(), key=len):
-            path_components = list(filter(bool, obj.getPhysicalPath()))
-            path_components.remove(portal_id)
-            node = self._get_shadowtree_root()
-            for path_component in path_components:
-                node = node[path_component]
-                self.assertTrue(hasattr(node, 'block_inherit_roles'))
-                self.assertTrue(node.token,
-                                msg='Node has no security info: %r' % node)
-            self.assertEqual(node.physical_path, obj.getPhysicalPath())
+class ObjectSecurityTestsMixin(testing.TestCaseMixin):
 
     def _get_target_class(self):
         from ..adapters import ObjectSecurity
@@ -75,43 +19,46 @@ class ObjectSecurityTestsMixin(object):
         return cls(*args, **kw)
 
     def _call_mut(self, obj, **kw):
-        catalog = api.portal.get_tool('portal_catalog')
-        adapter = self._make_one(obj, catalog)
+        adapter = self._make_one(obj, self.catalog)
         adapter.reindex()
         self._check_shadowtree_nodes_have_security_info()
-
-    def _query(self, local_roles, operator='or'):
-        pa_testing.logout()
-        pa_testing.login(self.portal, self.query_user.getUserName())
-        catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.unrestrictedSearchResults({
-            'allowedRolesAndUsers': {
-                'query': local_roles,
-                'operator': operator
-            }
-        })
-        return brains
 
     def _check_catalog(self,
                        local_roles,
                        expected_paths,
-                       search_operator='or'):
-        brains = self._query(local_roles, operator=search_operator)
-        prefix = '/%s' % self.portal.getId()
-        paths = set(brain.getPath().replace(prefix, '') for brain in brains)
+                       search_operator=b'or'):
+        pa_testing.logout()
+        pa_testing.login(self.portal, self.query_user.getUserName())
+        brains = self.catalog.unrestrictedSearchResults({
+            b'allowedRolesAndUsers': {
+                b'query': local_roles,
+                b'operator': search_operator
+            }
+        })
+        prefix = b'/%s' % self.portal.getId()
+        paths = set(brain.getPath().replace(prefix, b'') for brain in brains)
         self.assertSetEqual(paths, set(expected_paths))
 
-    def _create_members(self, member_ids):
-        for member_id in member_ids:
-            email = '%s@plone.org' % member_id
-            api.user.create(username=member_id, email=email)
+    def _populate(self):
+        self.folders_by_path.clear()
+        st_root = self._get_shadowtree_root()
+        st_root.clear()
+        create_folder = self._create_folder
+        create_folder(b'/a', [b'Reader'], userid=b'matt')
+        create_folder(b'/a/b', [b'Reader'])
+        create_folder(b'/a/b/c', [b'Reader', b'Editor'])
+        create_folder(b'/a/b/c/a', [b'Reader', b'Editor'])
+        create_folder(b'/a/b/c/d', [b'Reader', b'Editor'])
+        create_folder(b'/a/b/c/e', [b'Reader'], userid=b'liz', block=True)
+        create_folder(b'/a/b/c/e/f', [b'Reader'])
+        create_folder(b'/a/b/c/e/f/g', [b'Reviewer'])
 
     def setUp(self):
+        super(ObjectSecurityTestsMixin, self).setUp()
         portal = self.portal
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
-        wftool = api.portal.get_tool('portal_workflow')
-        wftool.setDefaultChain('intranet_workflow')
+        self._set_default_workflow_chain('intranet_workflow')
         # Create a user that never is owns
         # any objects created by this test.
         self.query_user = api.user.create(
@@ -126,61 +73,58 @@ class ObjectSecurityTestsMixin(object):
                             self.query_user.getUserId(),
                             ['Manager'])
 
+    def test_interface_conformance(self):
+        adapter_cls = self._get_target_class()
+        verifyClass(IObjectSecurity, adapter_cls)
+        folder = self._create_folder('/a', ['Reader'], userid='matt')
+        verifyObject(IObjectSecurity, self._make_one(folder, self.catalog))
+
     def test_allowedRolesAndUsers(self):
         self._populate()
-        self._check_catalog(['user:' + self.query_user.getUserId()],
-                            set())
-        self._check_catalog(['user:matt'], {
+        check_catalog = self._check_catalog
+        check_catalog(['user:' + self.query_user.getUserId()], set())
+        check_catalog(['user:matt'], {
             '/a',
             '/a/b',
             '/a/b/c',
             '/a/b/c/a',
             '/a/b/c/d',
         })
-        self._check_catalog(['user:liz'], {
+        check_catalog(['user:liz'], {
             '/a/b/c/e',
             '/a/b/c/e/f',
             '/a/b/c/e/f/g',
         })
-        self._check_catalog(['Reviewer'], set())
-        self._check_catalog(['Editor'], set(self.folders_by_path))
-        self._check_catalog(['Reader'], set(self.folders_by_path))
-
-    def _check_shadowtree_paths(self, root, expected_paths):
-        shadow_paths = {
-            node.physical_path
-            for node in root.descendants(ignore_block=True)
-        }
-        self.assertSetEqual(shadow_paths, expected_paths)
+        check_catalog(['Reviewer'], set())
+        check_catalog(['Editor'], set(self.folders_by_path))
+        check_catalog(['Reader'], set(self.folders_by_path))
 
     def test_shadowtree_integrity(self):
-        catalog = api.portal.get_tool('portal_catalog')
         st_root = self._get_shadowtree_root()
         st_root.clear()
-        self._check_shadowtree_paths(st_root, set())
+        check_shadowtree_integrity = self._check_shadowtree_paths
+        check_shadowtree_integrity(st_root, set())
         self._populate()
-        self._check_shadowtree_paths(st_root, {
+        check_shadowtree_integrity(st_root, {
             tuple(b.getPath().split('/'))
-            for b in catalog.unrestrictedSearchResults(path='/plone/a')
+            for b in self.catalog.unrestrictedSearchResults(path='/plone/a')
         })
 
         api.content.delete(self.portal['a']['b']['c']['d'])
-        self._check_shadowtree_paths(st_root, {
+        check_shadowtree_integrity(st_root, {
             tuple(b.getPath().split('/'))
-            for b in catalog.unrestrictedSearchResults(path='/plone/a')
+            for b in self.catalog.unrestrictedSearchResults(path='/plone/a')
         })
 
     def _private_content_with_default_workflow(self):
-        wftool = api.portal.get_tool('portal_workflow')
-        wftool.setDefaultChain('plone_workflow')
+        self._set_default_workflow_chain('plone_workflow')
         self._populate()
         for obj in self.folders_by_path.values():
             api.content.transition(obj, 'hide')
 
         # Logout, check that Anonymous cannot access any contents.
         pa_testing.logout()
-        catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         self.assertEqual(len(brains), 0)
 
     def test_reindex_on_workflow_transistion(self):
@@ -194,8 +138,7 @@ class ObjectSecurityTestsMixin(object):
         # Logout, check that we can access the item that's
         # been shown and nothing else.
         pa_testing.logout()
-        catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         self.assertEqual(brains[0].getPath(), '/plone/a')
 
     def test_reindex_on_grant_roles(self):
@@ -209,8 +152,7 @@ class ObjectSecurityTestsMixin(object):
         pa_testing.logout()
 
         pa_testing.login(self.portal, 'guido')
-        catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertTrue(actual)
         self.assertSetEqual(actual, {
@@ -224,8 +166,7 @@ class ObjectSecurityTestsMixin(object):
         self._private_content_with_default_workflow()
         pa_testing.logout()
         pa_testing.login(self.portal, 'liz')
-        catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertTrue(actual)
         self.assertSetEqual(actual, {
@@ -246,7 +187,7 @@ class ObjectSecurityTestsMixin(object):
 
         # Check liz can see everything under her granted
         # access *up until a local role block*
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertEqual(actual, {
             '/a/b/c',
@@ -262,8 +203,7 @@ class ObjectSecurityTestsMixin(object):
         pa_testing.logout()
 
         pa_testing.login(self.portal, 'guido')
-        catalog = api.portal.get_tool('portal_catalog')
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertTrue(actual)
         self.assertSetEqual(actual, {
@@ -282,7 +222,7 @@ class ObjectSecurityTestsMixin(object):
         pa_testing.logout()
 
         pa_testing.login(self.portal, 'guido')
-        brains = catalog.searchResults()
+        brains = self.catalog.searchResults()
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertSetEqual(actual, set(self.folders_by_path))
 
@@ -292,13 +232,13 @@ class TestObjectSecurityAT(ObjectSecurityTestsMixin, unittest.TestCase):
     layer = testing.AT_INTEGRATION
 
 
-class _PatchedMixin(object):
+class MonkeyPatchedMixin(object):
 
     def _call_mut(self, obj, **kw):
         obj.reindexObjectSecurity(**kw)
 
 
-class TestObjectSecurityATPatched(_PatchedMixin, TestObjectSecurityAT):
+class TestObjectSecurityATPatched(MonkeyPatchedMixin, TestObjectSecurityAT):
     """Run the tests with the monkey patched method."""
 
 
@@ -312,6 +252,5 @@ class TestObjectSecurityDX(ObjectSecurityTestsMixin, unittest.TestCase):
         api.content.delete(obj=self.portal['robot-test-folder'])
 
 
-class TestObjectSecurityDXPatched(_PatchedMixin,
-                                  TestObjectSecurityDX):
+class TestObjectSecurityDXPatched(MonkeyPatchedMixin, TestObjectSecurityDX):
     """Run the tests with the monkey patched method."""

@@ -1,3 +1,16 @@
+"""Abuse zope.testrunner layers for the purpose of generating benchmarks.
+
+Here we attempt to do some rudimentary testing against
+Plone sites setup with Archetypes (AT) and Dexterity (DX)
+via plone.app.contenttypes.
+
+Layers are configured thus:
+  - Without the optimisation's ('Vanilla')
+  - With the optimisation addon ('Installed')
+
+The same 'tests' are run for the Vanilla and Installed variants.
+
+"""
 from __future__ import print_function
 import collections
 import contextlib
@@ -12,26 +25,21 @@ import time
 
 from Products.CMFCore.CMFCatalogAware import CMFCatalogAware
 from plone import api
-from plone.app.contenttypes.testing import PLONE_APP_CONTENTTYPES_FIXTURE
-from plone.testing import z2
-import pkg_resources
+from plone.app.contenttypes.testing import (
+    PLONE_APP_CONTENTTYPES_FIXTURE,
+)
 import plone.app.testing as pa_testing
 import transaction
 
 from . import testing
 
 
-def timed(func):
-    @functools.wraps(func)
-    def timer(*args, **kw):
-        start = time.time()
-        elapsed = 0
-        try:
-            func(*args, **kw)
-        finally:
-            elapsed = time.time() - start
-        return elapsed
-    return timer
+@contextlib.contextmanager
+def timings():
+    start = time.time()
+    data = dict(elapsed=0)
+    yield data
+    data[b'duration'] = time.time() - start
 
 
 def profile(func):
@@ -43,7 +51,7 @@ def profile(func):
             result = func(*args, **kw)
         finally:
             prof.disable()
-            path = '/tmp/%s-%s-%s' % (
+            path = b'/tmp/%s-%s-%s' % (
                 func.__module__,
                 func.__name__, os.getpid()
             )
@@ -62,7 +70,6 @@ def catalog_disabled():
 
 def create_content_tree(parent, nwide, ndeep,
                         commit_interval=500,
-                        total=0,
                         level=0, verbose=False):
     """Recursively create a tree of content.
 
@@ -85,75 +92,52 @@ def create_content_tree(parent, nwide, ndeep,
     for i in range(nwide):
         fid = string.ascii_lowercase[i]
         folder = api.content.create(container=parent,
-                                    type='Folder',
+                                    type=b'Folder',
                                     id=fid)
-        total += 1
         siblings.append(folder)
         count += 1
     if verbose:
-        print('/'.join(folder.getPhysicalPath()[:-1]))
-        print(' ' * level, ', '.join(s.getId() for s in siblings))
+        print(b'/'.join(folder.getPhysicalPath()[:-1]))
+        print(b' ' * level, b', '.join(s.getId() for s in siblings))
     level += 1
     for sibling in siblings:
         count += create_content_tree(sibling, nwide, ndeep,
                                      commit_interval,
-                                     total=total,
                                      level=level,
                                      verbose=verbose)
-        if total % commit_interval == 0:
-            transaction.commit()
+        if count % commit_interval == 0:
+            transaction.savepoint()
     return count
 
 
-class BenchmarkLayer(pa_testing.PloneSandboxLayer):
-    """Base class for benchmark layers.
+class BenchmarkLayerMixin(object):
+    """Mixin class for benchmark layers.
 
     Ensures that a tree of content is created after installation
     of packages is performed.
     """
-    n_wide = 2
-    n_deep = 2
+    n_siblings = int(os.environ.get(b'BENCHMARK_N_SIBLINGS', 2))
+    n_levels = int(os.environ.get(b'BENCHMARK_N_LEVELS', 2))
 
     def _sanity_checks(self):
         raise NotImplementedError()
 
     def setUpPloneSite(self, portal):
-        super(BenchmarkLayer, self).setUpPloneSite(portal)
-        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
+        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, [b'Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
-        super(BenchmarkLayer, self).setUpPloneSite(portal)
-        wftool = api.portal.get_tool('portal_workflow')
-        wftool.setDefaultChain('simple_publication_workflow')
+        wftool = api.portal.get_tool(b'portal_workflow')
+        wftool.setDefaultChain(b'simple_publication_workflow')
         self.top = api.content.create(api.portal.get(),
-                                      id='bench-root',
-                                      type='Folder')
+                                      id=b'bench-root',
+                                      type=b'Folder')
         with catalog_disabled():
-            create_content_tree(self.top, self.n_wide, self.n_deep)
-        catalog = api.portal.get_tool('portal_catalog')
+            create_content_tree(self.top, self.n_siblings, self.n_levels)
+        catalog = api.portal.get_tool(b'portal_catalog')
         catalog.clearFindAndRebuild()
         self._sanity_checks()
 
 
-class VanillaDXBenchLayer(BenchmarkLayer):
-    """A layer which ensure Dexteity is used for the default content types."""
-
-    defaultBases = (
-        PLONE_APP_CONTENTTYPES_FIXTURE,
-        pa_testing.PLONE_FIXTURE
-    )
-
-    def _sanity_checks(self):
-        assert self.top.meta_type.startswith('Dexterity')
-
-
-class InstalledDXBenchLayer(testing.SecurityIndexingLayerMixin,
-                            VanillaDXBenchLayer):
-    """A benchmark layer that installs plone.app.contenttypes,
-    and this addon package.
-    """
-
-
-class VanillaATBenchLayer(BenchmarkLayer):
+class BenchmarkATLayer(BenchmarkLayerMixin, pa_testing.PloneSandboxLayer):
     """A Plone 4.3.x layer for benchmarking.
 
     This layer installs no additional addons.
@@ -162,69 +146,77 @@ class VanillaATBenchLayer(BenchmarkLayer):
     defaultBases = (pa_testing.PLONE_FIXTURE,)
 
     def _sanity_checks(self):
-        assert self.top.meta_type.startswith('ATFolder')
+        assert self.top.meta_type.startswith(b'ATFolder')
 
 
-class InstalledATBenchLayer(testing.SecurityIndexingLayerMixin,
-                            VanillaATBenchLayer):
-    """A benchmark layer this addon package installed."""
+class BenchmarkDXLayer(BenchmarkLayerMixin, pa_testing.PloneSandboxLayer):
+    """A layer which ensure Dexteity is used for the default content."""
+
+    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE,)
+
+    def _sanity_checks(self):
+        assert self.top.meta_type.startswith(b'Dexterity')
 
 
-AT_VANILLA_FIXTURE = VanillaATBenchLayer()
-AT_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_VANILLA_FIXTURE, z2.ZSERVER_FIXTURE),
-    name='%s.B_VanillaATLayer:Integration' % __package__
+AT_FIXTURE = BenchmarkATLayer()
+
+DX_FIXTURE = BenchmarkDXLayer()
+
+# [A-Z]{3,3} Prefixing of layer names here
+# is done to force ordering of layer executation
+# by zope.testrunner, such that p.a.testing does not choke.
+# For some reason DemoStorage created by p.testing.z2 goes AWOL
+# unless DX tests run first. (p.a.event testing problem?)
+
+VANILLA_AT_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_FIXTURE,),
+    name=b'KKK_VanillaAT:Integration'
 )
-
-AT_INSTALLED_FIXTURE = InstalledATBenchLayer()
-AT_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_INSTALLED_FIXTURE, z2.ZSERVER_FIXTURE),
-    name='%s.B_InstalledATLayer:Integration' % __package__
+VANILLA_DX_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_FIXTURE,),
+    name=b'JJJ_VanillaDX:Integration'
 )
-
-DX_VANILLA_FIXTURE = VanillaDXBenchLayer()
-DX_VANILLA_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_VANILLA_FIXTURE, z2.ZSERVER_FIXTURE),
-    name='%s.A_VanillaDXLayer:Integration' % __package__
+INSTALLED_AT_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(AT_FIXTURE, testing.AT_FIXTURE),
+    name=b'ZZZ_InstalledAT:Integration'
 )
-
-DX_INSTALLED_FIXTURE = InstalledDXBenchLayer()
-DX_INSTALLED_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_INSTALLED_FIXTURE, z2.ZSERVER_FIXTURE),
-    name='%s.A_InstalledDXLayer:Integration' % __package__
+INSTALLED_DX_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(DX_FIXTURE, testing.DX_FIXTURE),
+    name=b'YYY_InstalledDX:Integration'
 )
 
 
 class BenchTestMixin(object):
 
-    results_path = pkg_resources.resource_filename(
-        __package__, 'bench-results.csv'
-    )
-
     def _write_result(self, duration):
-        pc = api.portal.get_tool('portal_catalog')
-        portal = self.layer['portal']
-        bench_root_path = '/'.join(portal['bench-root'].getPhysicalPath())
+        pc = api.portal.get_tool(b'portal_catalog')
+        portal = self.layer[b'portal']
+        bench_root_path = b'/'.join(portal[b'bench-root'].getPhysicalPath())
         brains = pc.searchResults(path=bench_root_path)
         n_objects = len(brains)
         items = [
-            ('timestamp', datetime.datetime.now().isoformat()),
-            ('test-name', self.id()),
-            ('duration', duration),
-            ('n-objects', n_objects)
+            (b'timestamp', datetime.datetime.now().isoformat()),
+            (b'test-name', self.id()),
+            (b'duration', duration),
+            (b'n-objects', n_objects)
         ]
         row = collections.OrderedDict(items)
-        with open(self.results_path, 'a') as fp:
-            writer = csv.DictWriter(fp, list(row))
+        results_path = os.environ.get(b'BENCHMARK_RESULTS_FILE',
+                                      b'bench-results.csv')
+        write_header = not os.path.exists(results_path)
+        with open(results_path, b'a') as fp:
+            writer = csv.DictWriter(fp, fieldnames=list(row))
+            if write_header:
+                writer.writeheader()
             writer.writerow(row)
-        print(row)
 
     def _call_mut(self, obj, *args, **kw):
-        method = timed(obj.reindexObjectSecurity)
-        return method(*args, **kw)
+        with timings() as timing_data:
+            obj.reindexObjectSecurity()
+        return timing_data[b'duration']
 
-    def _get_obj(self, path=''):
-        return api.content.get('/plone/bench-root' + path)
+    def _get_obj(self, path=b''):
+        return api.content.get(b'/plone/bench-root' + path)
 
     def test_reindexObjectSecurity_from_root_nochange(self):
         subject = self._get_obj()
@@ -233,53 +225,49 @@ class BenchTestMixin(object):
 
     def test_reindexObjectSecurity_from_root_wfchange(self):
         subject = self._get_obj()
-        api.content.transition(subject, 'publish')
+        api.content.transition(subject, b'publish')
         duration = self._call_mut(subject)
         self._write_result(duration)
 
     def test_reindexObjectSecurity_from_root_lrchange(self):
         subject = self._get_obj()
-        api.user.create(username='bob',
-                        email='bob@example.com')
-        api.user.grant_roles(username='bob',
+        api.user.create(username=b'bob',
+                        email=b'bob@example.com')
+        api.user.grant_roles(username=b'bob',
                              obj=subject,
-                             roles=['Reader'])
+                             roles=[b'Reader'])
         duration = self._call_mut(subject)
         self._write_result(duration)
 
     def test_reindexObjectSecurity_from_root_lrchange_with_lrblock(self):
         subject = self._get_obj()
-        api.user.create(username='bob',
-                        email='bob@example.com')
-        api.user.grant_roles(username='bob',
+        api.user.create(username=b'bob',
+                        email=b'bob@example.com')
+        api.user.grant_roles(username=b'bob',
                              obj=subject,
-                             roles=['Reader'])
-        blocked = subject['a']
+                             roles=[b'Reader'])
+        blocked = subject[b'a']
         blocked.__ac_local_roles_block__ = True
         self._call_mut(blocked)
         duration = self._call_mut(subject)
         self._write_result(duration)
 
 
-class VanillaDXBenchTest(BenchTestMixin, unittest.TestCase):
+class VanillaATBenchmarks(BenchTestMixin, unittest.TestCase):
 
-    layer = DX_VANILLA_INTEGRATION
-
-
-class InstalledDXBenchTest(VanillaDXBenchTest):
-
-    layer = DX_INSTALLED_INTEGRATION
+    layer = VANILLA_AT_INTEGRATION
 
 
-class VanillaATBenchTest(BenchTestMixin, unittest.TestCase):
+class VanillaDXBenchmarks(BenchTestMixin, unittest.TestCase):
 
-    layer = AT_VANILLA_INTEGRATION
-
-
-class InstalledATBenchTest(VanillaATBenchTest):
-
-    layer = AT_INSTALLED_INTEGRATION
+    layer = VANILLA_DX_INTEGRATION
 
 
-if __name__ == '__main__':
-    unittest.main()
+class InstalledATBenchmarks(VanillaATBenchmarks):
+
+    layer = INSTALLED_AT_INTEGRATION
+
+
+class InstalledDXBenchmarks(VanillaDXBenchmarks):
+
+    layer = INSTALLED_DX_INTEGRATION
