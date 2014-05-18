@@ -6,7 +6,7 @@ from Products.CMFCore.utils import getToolByName
 from .adapters import ObjectSecurity
 
 
-def at_reindexObjectSecurity(self, skip_self=False):
+def at_reindexObjectSecurity(self):
     if isFactoryContained(self):  # pragma: no cover
         return
     at = getToolByName(self, TOOL_NAME, None)
@@ -16,12 +16,12 @@ def at_reindexObjectSecurity(self, skip_self=False):
                 if ICatalogTool.providedBy(c)]
     for catalog in catalogs:
         adapter = ObjectSecurity(self, catalog)
-        adapter.reindex(skip_self=skip_self)
+        adapter.reindex()
 
 
-def dx_reindexObjectSecurity(self, skip_self=False):
+def dx_reindexObjectSecurity(self):
     catalog_tool = self._getCatalogTool()
     if catalog_tool is None:  # pragma: no cover
         return
     adapter = ObjectSecurity(self, catalog_tool)
-    adapter.reindex(skip_self=skip_self)
+    adapter.reindex()

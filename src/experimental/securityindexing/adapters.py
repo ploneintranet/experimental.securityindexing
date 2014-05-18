@@ -43,10 +43,6 @@ is as follows:
  1. Record the security token (hashed  value of all local roles)
     before and after re-indexing the current context.
 
-TODO: if skip_self is True, we should not re-index ourselves,
-      but then what to do about descendants? [1]
-
- TODO: revise (2.) with respect to the above TODO [1]
  2. Re-index our context, as we need to do this regardless of changes
     as this might have been a workflow change, and hence
     allowedRolesAndUsers may have changed.
@@ -106,13 +102,14 @@ Considerations
 import collections
 
 from Products.CMFCore.interfaces import IIndexableObject
-from zope.component import getMultiAdapter
+from plone import api
+from zope import component, interface
 
-from . import shadowtree
+from .interfaces import IObjectSecurity, IShadowTreeTool
 
 
 class _IndexableContentishProxy(object):
-    """A lightweight 'proxy' object.
+    """A lightweight content proxy object.
 
     This is stand-in for an item of content,
     which implements the bare minimum functionality
@@ -131,25 +128,28 @@ class _IndexableContentishProxy(object):
         return self._path_components
 
 
+@interface.implementer(IObjectSecurity)
 class ObjectSecurity(object):
-    """Manage reindexing object security of the `allowedRolesAndUsers` index.
-    """
+    """Manage reindexing security of the `allowedRolesAndUsers` index."""
 
     _index_ids = ('allowedRolesAndUsers',)
 
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
-        self._shadowtree = shadowtree.get_root()
+        portal = api.portal.get()
+        sm = portal.getSiteManager()
+        self._shadowtree = sm.getUtility(IShadowTreeTool)
 
     def _reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
         reindex(obj, idxs=self._index_ids, update_metadata=0)
 
     def _to_indexable(self, obj):
-        return getMultiAdapter((obj, self.catalog_tool), IIndexableObject)
+        return component.getMultiAdapter((obj, self.catalog_tool),
+                                         IIndexableObject)
 
-    def reindex(self, skip_self=False):
+    def reindex(self):
         """Reindex the contents of `allowedRolesAndUsers` index.
 
         Potentially reindex descendant objects in the content tree.
@@ -159,27 +159,25 @@ class ObjectSecurity(object):
         this method can make descisions regarding which descendants need
         to be re-indexed.
         """
-        node = self._shadowtree.ensure_ancestry_to(self.context)
+        reindex_object = self._reindex_object
+        to_indexable = self._to_indexable
+        traverse = self.context.unrestrictedTraverse
+        root = self._shadowtree.root
+        node = root.ensure_ancestry_to(self.context)
         token_before = node.token
-        # TODO: if skip_self is True, we should not reindex ourselfs,
-        #       but then what to do about descendants?
-        self._reindex_object(self.context)
+        reindex_object(self.context)
         node.update_security_info(self.context)
         token_after = node.token
         if token_before != token_after:
             shared_tokens = collections.defaultdict(list)
             shared_tokens[node.token].append(node)
-
             for descendant in node.descendants(ignore_block=False):
                 shared_tokens[descendant.token].append(descendant)
-
-            traverse = self.context.unrestrictedTraverse
             for (old_token, nodes_group) in shared_tokens.items():
                 first_node = next(iter(nodes_group))
-                first_path = '/'.join(first_node.physical_path)
-                first_obj = traverse(first_path)
-                indexable = self._to_indexable(first_obj)
+                first_obj = traverse(first_node.physical_path)
+                indexable = to_indexable(first_obj)
                 aru = indexable.allowedRolesAndUsers
                 for node in nodes_group:
                     content_proxy = _IndexableContentishProxy(aru, node)
-                    self._reindex_object(content_proxy)
+                    reindex_object(content_proxy)

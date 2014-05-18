@@ -4,70 +4,44 @@ A shadow tree mirrors the Portal content tree in a Zope/Plone site,
 each node storing security identifiers in order to enablable
 an index to make decisions when indexing.
 """
-from __future__ import print_function
-
 import BTrees
-import zope.interface
 from persistent import Persistent
 from plone import api
-from zope.annotation.interfaces import IAnnotations
+from zope import interface
+
+from .interfaces import IShadowTreeNode
 
 
 _marker = object()
 
 
-def _get_storage():
-    return IAnnotations(api.portal.get())
-
-
-def destroy():
-    storage = _get_storage()
-    if __package__ in storage:
-        del storage[__package__]
-
-
-def get_root():
-    """Gets the root shadow tree.
-
-    Creates the root node if one hasn't previously been
-    created.
-    """
-    # TODO: This annotated storage needs to be deleted upon product uninstall
-    #       We'll need to split this function up in order
-    #       to clear the shadow tree in the GS uninstall profile.
-    storage = _get_storage()
-    root = storage.get(__package__)
-    if root is None:
-        root = Node()
-        storage[__package__] = root
-    return root
-
-
-@zope.interface.implementer(BTrees.Interfaces.IDictionaryIsh)
+@interface.implementer(IShadowTreeNode)
 class Node(Persistent):
-    """A Node corresponding to a content item in the a Zope instance.
-    """
+    """A Node corresponding to an item in the content tree."""
+
     __parent__ = None
+    "The parent node"
+
     id = None
     block_inherit_roles = False
     token = None
     physical_path = None
-    family = BTrees.family64
 
-    def __init__(self, id='', parent=None):
+    def __init__(self, id=b'', parent=None, family=BTrees.family64):
         super(Node, self).__init__()
-        self._data = self.family.OO.BTree()
+        self._data = family.OO.BTree()
         self.id = id
         self.__parent__ = parent
+        interface.alsoProvides(self, BTrees.Interfaces.IBTree)
 
     def __repr__(self):  # pragma: no cover
-        return '%s("%s")' % (type(self).__name__, self.id)
+        return b'%s("%s")' % (type(self).__name__, self.id)
 
     def __getattr__(self, name):
         value = getattr(self._data, name, _marker)
         if value is _marker:
             raise AttributeError(
-                '%r object has no attribute %r' % (
+                b'%r object has no attribute %r' % (
                     '%s.%s' % (__package__, type(self).__name__),
                     name
                 )
@@ -100,8 +74,14 @@ class Node(Persistent):
     @staticmethod
     def _get_path_components(obj):
         portal_id = api.portal.get().getId()
-        path_components = obj.getPhysicalPath()
-        portal_path_idx = path_components.index(portal_id) + 1
+        if isinstance(obj, (tuple, list)):
+            path_components = obj
+        else:
+            path_components = obj.getPhysicalPath()
+        portal_path_idx = 0
+        if portal_id in path_components:
+            portal_path_idx = path_components.index(portal_id)
+        portal_path_idx += 1
         return tuple(path_components[portal_path_idx:])
 
     @classmethod
@@ -118,14 +98,12 @@ class Node(Persistent):
           * Anonymous
           * Authenticated
 
-        :param cls: The type of this node.
-        :type cls: experimental.localrolesindex.shadowtree.Node
         :param obj: The content item.
         :type obj: IContentish
         :returns: The hash of the local role information contained by `obj`.
         :rtype: int
         """
-        acl_users = api.portal.get_tool('acl_users')
+        acl_users = api.portal.get_tool(b'acl_users')
         ac_local_roles = acl_users._getAllLocalRoles(obj)
         local_roles = tuple((k, frozenset(v))
                             for (k, v) in ac_local_roles.items())
@@ -133,7 +111,7 @@ class Node(Persistent):
 
     @staticmethod
     def get_local_roles_block(obj):
-        return getattr(obj, '__ac_local_roles_block__', False)
+        return getattr(obj, b'__ac_local_roles_block__', False)
 
     def ensure_ancestry_to(self, obj):
         """Retrieve the shadow node for corresponding content object.
@@ -174,7 +152,7 @@ class Node(Persistent):
 
         Optionally yields nodes that have local roles blocked.
 
-        :param ignore_block: If False and a node has block_local_roles set
+        :param ignore_block: If False and a node has block_local_roles setpl
                              to True, do not descend to any of its children.
         """
         for node in self.values():
@@ -183,3 +161,31 @@ class Node(Persistent):
             yield node
             for descendant in node.descendants(ignore_block=ignore_block):
                 yield descendant
+
+    def traverse(self, traversable):
+        """Traverse to a node for the given traversable object.
+
+        :param obj: A traversable.
+        :type obj: str, tuple, list
+        :returns: The node found for the given path.
+        :rtype: experimental.securityindexing.shadowtree.Node
+        :raises: LookupError
+        """
+        if isinstance(traversable, (list, tuple)):
+            physical_path = traversable
+        elif isinstance(traversable, basestring):
+            physical_path = tuple(traversable.split('/'))
+        else:
+            raise TypeError(b'Object %r is not traversable' % traversable)
+        if physical_path[0] != self.id:
+            raise LookupError(
+                b'Cannot traverse from here %r '
+                b'to  a node from that path %r.' % (self.id, physical_path)
+            )
+        node = self
+        for comp in self._get_path_components(physical_path):
+            if comp in node:
+                node = node[comp]
+            else:
+                raise LookupError(physical_path)
+        return node

@@ -1,5 +1,6 @@
 <configure
     xmlns="http://namespaces.zope.org/zope"
+    xmlns:five="http://namespaces.zope.org/five"
     xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
     xmlns:grok="http://namespaces.zope.org/grok"
     xmlns:i18n="http://namespaces.zope.org/i18n"
@@ -8,7 +9,7 @@
     i18n_domain="experimental.securityindexing">
 
   <includeDependencies package="." />
-
+  <five:registerPackage package="." initialize=".initialize" />
   <grok:grok package="." />
 
   <include file="patches.zcml" />
@@ -23,10 +24,25 @@
 
   <genericsetup:registerProfile
     name="uninstall"
-    title="Uninstalls securityindexing optimisations"
+    title="experimental.securityindexing: uninstall"
     directory="profiles/uninstall"
-    description="Extension profile"
+    description="Uninstalls the experimental.securityindexing package."
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
+
+  <subscriber
+    for="Products.CMFCore.interfaces.IContentish
+         zope.lifecycleevent.interfaces.IObjectAddedEvent"
+    handler=".subscribers.on_object_added"
+    />
+
+  <subscriber
+    for="Products.CMFCore.interfaces.IContentish
+         zope.lifecycleevent.interfaces.IObjectRemovedEvent"
+    handler=".subscribers.on_object_removed"
+    />
+
+  <!-- Site-local utility -->
+  <utility factory=".utilities.ShadowTreeTool" />
  
 </configure>

@@ -12,7 +12,6 @@ omit =
 [report]
 exclude_lines =
     \s+pragma: no cover
-    assert
     raise AssertionError
     raise NotImplementedError
     @abc.abstractmethod

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<componentregistry>
+ <utilities>
+  <utility
+    interface="experimental.securityindexing.interfaces.IShadowTreeTool"
+    object="portal_shadowtree"
+    remove="True"
+  />
+ </utilities>
+</componentregistry>
