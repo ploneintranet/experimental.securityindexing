@@ -3,22 +3,15 @@
 # Copyright (c) 2014 Netsight Internet Solutions
 # All Rights Reserved.
 #
-# This software is subject to the provisions of the Zope Public License,
-# Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
-# THIS SOFTWARE IS PROVIDED "AS IS" AND ANY AND ALL EXPRESS OR IMPLIED
-# WARRANTIES ARE DISCLAIMED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF TITLE, MERCHANTABILITY, AGAINST INFRINGEMENT, AND FITNESS
-# FOR A PARTICULAR PURPOSE.
-#
 ##############################################################################
 
 from setuptools import setup, find_packages
 
 
 setup(name='experimental.securityindexing',
-      version='0.1dev',
+      version='0.2dev',
       url='https://github.com/ploneintranet/experimental.securityindexing',
-      license='ZPL 2.1',
+      license='GPLv2',
       description="""\
       Optimises indexing of object security for a Plone site.
       """,
@@ -33,7 +26,6 @@ setup(name='experimental.securityindexing',
       package_dir={'': 'src'},
       install_requires=[
           'setuptools',
-          'five.grok',
           'plone.api'
       ],
       extras_require={
