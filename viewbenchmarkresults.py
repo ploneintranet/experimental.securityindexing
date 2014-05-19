@@ -8,7 +8,6 @@ import collections
 import json
 import operator
 import random
-from pprint import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -130,4 +129,4 @@ def plot_benchmark_results(benchmark_results_path):
 
 
 if __name__ == '__main__':
-    plot_benchmark_results(b'benchmark-results.json')
+    plot_benchmark_results(b'benchmark-results.json.sample')
