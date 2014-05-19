@@ -9,8 +9,34 @@
 experimental.securityindexing
 =============================
 
-Foreword
-========
+Installation
+============
+
+To install this package, add `experimental.securityindexing` to your Plone sites'
+eggs and re-run buildout:
+
+.. code-block: ini
+
+  [buildout]
+  ...
+  eggs += experimental.securityindexing
+
+
+Testing it out
+--------------
+Installation is as above, but add the `benchmarks` extra:
+
+.. code-block: ini
+
+  [buildout]
+  ...
+  eggs += experimental.securityindexing [benchmarks]
+
+Please read the `benchmark docs`_ for details.
+
+
+Description
+===========
 This package aims to address a long-standing performance issue in Plone: 
 
   When adding roles to users or groups via the @@sharing action
@@ -102,11 +128,11 @@ The following scheme was envisioned to optimise the above algorithm:
 
 Credit
 ======
-This work has been done as part of the `Plone Intranet project <http://github.com/ploneintranet>`_. 
-Work sponsored by `Netsight <http://www.netsight.co.uk>`_.
+This work has been done as part of the `Plone Intranet project`_. 
+Work sponsored by `Netsight Internet Solutions`_.
 
 
-    
-:author: Matt Russell <mattr@netsight.co.uk>
-:date-created: 2014-05-04
-:date-modified: 2014-05-16
+.. _`Netsight Internet Solutions`: http://www.netsight.co.uk
+.. _`Plone Intranet project`: http://github.com/ploneintranet
+.. _`benchmark docs`: docs/benchmarks.rst
+
