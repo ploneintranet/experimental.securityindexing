@@ -49,7 +49,6 @@ def group_durations_by_action(results, classifiers):
         result = results[classifier][b'action-duration']
         for action, duration in sorted(result.items()):
             grouped_durations.setdefault(action, []).append(duration)
-    pprint(dict(grouped_durations))
     return grouped_durations
 
 
@@ -128,7 +127,6 @@ def plot_benchmark_results(benchmark_results_path):
                         wspace=0.21,
                         hspace=0.31)
     plt.show()
-    # print(colors)
 
 
 if __name__ == '__main__':
