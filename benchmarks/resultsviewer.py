@@ -124,7 +124,7 @@ def plot_benchmark_results(benchmark_results_path):
                         right=0.77,
                         top=0.91,
                         wspace=0.21,
-                        hspace=0.31)
+                        hspace=0.61)
     plt.show()
 
 
