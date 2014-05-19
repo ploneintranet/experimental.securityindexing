@@ -2,7 +2,6 @@
 *.EGG-INFO
 *.egg
 *.egg-info
-*.ipy*
 *.mo
 *.pyc
 *.pyo
