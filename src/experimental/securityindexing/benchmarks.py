@@ -14,10 +14,10 @@ The same 'tests' are run for the Vanilla and Installed variants.
 from __future__ import print_function
 import collections
 import contextlib
-import csv
 import cProfile
 import datetime
 import functools
+import json
 import os
 import unittest
 import string
@@ -34,12 +34,85 @@ import transaction
 from . import testing
 
 
-@contextlib.contextmanager
-def timings():
-    start = time.time()
-    data = dict(elapsed=0)
-    yield data
-    data[b'duration'] = time.time() - start
+N_SIBLINGS = int(os.environ.get(b'BENCHMARK_N_SIBLINGS', 2))
+
+N_LEVELS = int(os.environ.get(b'BENCHMARK_N_LEVELS', 2))
+
+
+class Timings(object):
+
+    def __init__(self, method):
+        self._method = method
+        self._duration = None
+        self._test_ident = None
+        self._test_ident_lbl_mapping = None
+        self._results_path = os.environ.get(b'BENCHMARK_RESULTS_FILE',
+                                            b'bench-results.json')
+        assert os.access(os.path.dirname(self._results_path),
+                         os.R_OK | os.W_OK)
+
+    def __enter__(self):
+        self._start = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        if any((exc_type, exc_value, tb)):
+            return None
+        self._write_result()
+
+    def __call__(self, *args, **kw):
+        start = time.time()
+        rv = self._method(*args, **kw)
+        self._duration = time.time() - start
+        return rv
+
+    def _write_result(self):
+        timestamp = datetime.datetime.now().isoformat()
+        pc = api.portal.get_tool(b'portal_catalog')
+        bench_root_path = b'/'.join(self.context.getPhysicalPath())
+        brains = pc.searchResults(path=bench_root_path)
+        n_objects = len(brains)
+        qi_tool = api.portal.get_tool(b'portal_quickinstaller')
+        pkg_name = 'experimental.securityindexing'
+        is_installed = qi_tool.isProductInstalled(pkg_name)
+        classifier_fmt = b'{.content_type_identifier} {suffix}'
+        suffix = b'Installed' if is_installed else b'Original'
+        classifier = classifier_fmt.format(self, suffix=suffix)
+        storage = collections.defaultdict(dict)
+        try:
+            with open(self._results_path, b'r') as fp:
+                storage.update(json.load(fp))
+        except (IOError, OSError, ValueError, TypeError) as err:
+            print(err)
+        bm_key_fmt = b'[N_SIBLINGS={n_siblings},N_LEVELS={n_levels}]'
+        bm_key = bm_key_fmt.format(n_siblings=N_SIBLINGS, n_levels=N_LEVELS)
+        bm_container = storage.setdefault(bm_key, {
+            b'n_objects': n_objects,
+            b'operation': b'Reindex Object Security',
+            b'timestamp': timestamp
+        })
+        bm_settings = bm_container.setdefault(b'settings', {})
+        lbls = bm_settings.setdefault(b'action-labels', {})
+        lbls.update(self._test_ident_lbl_mapping)
+        bm_results = bm_container.setdefault(b'results', {})
+        classified = bm_results.setdefault(classifier, {})
+        durations_by_action = classified.setdefault(b'action-duration', {})
+        durations_by_action[self._test_ident] = self._duration
+        with open(self._results_path, b'w') as fp:
+            json.dump(storage, fp)
+
+    @property
+    def content_type_identifier(self):
+        if self.context.meta_type.startswith('Dexterity'):
+            return b'Dexterity'
+        return b'Archetypes'
+
+    def set_test_identifier_label_map(self, label_mapping):
+        self._test_ident_lbl_mapping = collections.OrderedDict(label_mapping)
+
+    def set_context(self, content_obj, test_identifier):
+        self.context = content_obj
+        self._test_ident = test_identifier
 
 
 def profile(func):
@@ -68,28 +141,28 @@ def catalog_disabled():
     CMFCatalogAware._getCatalogTool = catalog_tool
 
 
-def create_content_tree(parent, nwide, ndeep,
+def create_content_tree(parent, n_siblings, n_levels,
                         commit_interval=500,
                         level=0, verbose=False):
     """Recursively create a tree of content.
 
     :param parent: The parent node.
     :type parent: IContentish
-    :param nwide: The number of folders to create at each level.
-    :type nwide: int
-    :param ndeep: The number of levels deep the tree should be.
-    :type ndeep: int
+    :param n_siblings: The number of folders to create at each level.
+    :type n_siblings: int
+    :param n_levels: The number of levels deep the tree should be.
+    :type n_levels: int
     :param level: The current level
     :type level: int
     :param verbose: Whether or not print each time a folder is created.
     :type verbose: bool
     """
     count = 0
-    if ndeep == 0:
+    if n_levels == 0:
         return count
-    ndeep -= 1
+    n_levels -= 1
     siblings = []
-    for i in range(nwide):
+    for i in range(n_siblings):
         fid = string.ascii_lowercase[i]
         folder = api.content.create(container=parent,
                                     type=b'Folder',
@@ -101,7 +174,9 @@ def create_content_tree(parent, nwide, ndeep,
         print(b' ' * level, b', '.join(s.getId() for s in siblings))
     level += 1
     for sibling in siblings:
-        count += create_content_tree(sibling, nwide, ndeep,
+        count += create_content_tree(sibling,
+                                     n_siblings,
+                                     n_levels,
                                      commit_interval,
                                      level=level,
                                      verbose=verbose)
@@ -116,8 +191,6 @@ class BenchmarkLayerMixin(object):
     Ensures that a tree of content is created after installation
     of packages is performed.
     """
-    n_siblings = int(os.environ.get(b'BENCHMARK_N_SIBLINGS', 2))
-    n_levels = int(os.environ.get(b'BENCHMARK_N_LEVELS', 2))
 
     def _sanity_checks(self):
         raise NotImplementedError()
@@ -131,7 +204,7 @@ class BenchmarkLayerMixin(object):
                                       id=b'bench-root',
                                       type=b'Folder')
         with catalog_disabled():
-            create_content_tree(self.top, self.n_siblings, self.n_levels)
+            create_content_tree(self.top, N_SIBLINGS, N_LEVELS)
         catalog = api.portal.get_tool(b'portal_catalog')
         catalog.clearFindAndRebuild()
         self._sanity_checks()
@@ -188,46 +261,29 @@ INSTALLED_DX_INTEGRATION = pa_testing.IntegrationTesting(
 
 class BenchTestMixin(object):
 
-    def _write_result(self, duration):
-        pc = api.portal.get_tool(b'portal_catalog')
-        portal = self.layer[b'portal']
-        bench_root_path = b'/'.join(portal[b'bench-root'].getPhysicalPath())
-        brains = pc.searchResults(path=bench_root_path)
-        n_objects = len(brains)
-        items = [
-            (b'timestamp', datetime.datetime.now().isoformat()),
-            (b'test-name', self.id()),
-            (b'duration', duration),
-            (b'n-objects', n_objects)
-        ]
-        row = collections.OrderedDict(items)
-        results_path = os.environ.get(b'BENCHMARK_RESULTS_FILE',
-                                      b'bench-results.csv')
-        write_header = not os.path.exists(results_path)
-        with open(results_path, b'a') as fp:
-            writer = csv.DictWriter(fp, fieldnames=list(row))
-            if write_header:
-                writer.writeheader()
-            writer.writerow(row)
-
-    def _call_mut(self, obj, *args, **kw):
-        with timings() as timing_data:
-            obj.reindexObjectSecurity()
-        return timing_data[b'duration']
+    def _call_mut(self, obj, test_identifier, *args, **kw):
+        portal = api.portal.get()
+        with Timings(obj.reindexObjectSecurity) as benchmark:
+            benchmark.set_test_identifier_label_map([
+                (u'lrchange', u'Local role change'),
+                (u'lrchange_with_lrblock', u'Local role change with block'),
+                (u'wfchange', u'Workflow state change'),
+                (u'nochange', u'No change')
+            ])
+            benchmark.set_context(portal[b'bench-root'], test_identifier)
+            benchmark()
 
     def _get_obj(self, path=b''):
         return api.content.get(b'/plone/bench-root' + path)
 
     def test_reindexObjectSecurity_from_root_nochange(self):
         subject = self._get_obj()
-        duration = self._call_mut(subject)
-        self._write_result(duration)
+        self._call_mut(subject, 'nochange')
 
     def test_reindexObjectSecurity_from_root_wfchange(self):
         subject = self._get_obj()
         api.content.transition(subject, b'publish')
-        duration = self._call_mut(subject)
-        self._write_result(duration)
+        self._call_mut(subject, 'wfchange')
 
     def test_reindexObjectSecurity_from_root_lrchange(self):
         subject = self._get_obj()
@@ -236,8 +292,7 @@ class BenchTestMixin(object):
         api.user.grant_roles(username=b'bob',
                              obj=subject,
                              roles=[b'Reader'])
-        duration = self._call_mut(subject)
-        self._write_result(duration)
+        self._call_mut(subject, 'lrchange')
 
     def test_reindexObjectSecurity_from_root_lrchange_with_lrblock(self):
         subject = self._get_obj()
@@ -248,9 +303,8 @@ class BenchTestMixin(object):
                              roles=[b'Reader'])
         blocked = subject[b'a']
         blocked.__ac_local_roles_block__ = True
-        self._call_mut(blocked)
-        duration = self._call_mut(subject)
-        self._write_result(duration)
+        blocked.reindexObjectSecurity()
+        self._call_mut(subject, 'lrchange_with_lrblock')
 
 
 class VanillaATBenchmarks(BenchTestMixin, unittest.TestCase):
