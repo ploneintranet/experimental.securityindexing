@@ -21,6 +21,13 @@ setup(name='experimental.securityindexing',
           open('README.rst').read() + '\n' +
           open('CHANGES.rst').read()
       ),
+      classifiers=[
+          "Programming Language :: Python :: 2.7",
+          "Framework :: Plone :: 4.0",
+          "Framework :: Plone :: 4.1",
+          "Framework :: Plone :: 4.2",
+          "Framework :: Plone :: 4.3",
+      ],
       packages=find_packages('src'),
       namespace_packages=['experimental'],
       package_dir={'': 'src'},
