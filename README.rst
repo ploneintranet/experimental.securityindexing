@@ -1,7 +1,7 @@
 .. image:: https://api.travis-ci.org/ploneintranet/experimental.securityindexing.png
   :target: https://travis-ci.org/ploneintranet/experimental.securityindexing
 
-.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png
+.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png?branch=plot-benchmark-results :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing?branch=plot-benchmark-results 
   :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing?branch=plot-benchmark-results
 
 
