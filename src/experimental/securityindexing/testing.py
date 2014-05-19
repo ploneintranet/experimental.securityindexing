@@ -14,7 +14,8 @@ class SecurityIndexingBaseLayer(pa_testing.PloneWithPackageLayer):
 
     @classmethod
     def create(cls, bases, name_suffix):
-        name = b'{}()'.format(cls.__name__, name_suffix)
+        name = b'{name}({suffix})'.format(name=cls.__name__,
+                                          suffix=name_suffix)
         return cls(
             name=name,
             bases=bases,
