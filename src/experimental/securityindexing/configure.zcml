@@ -41,5 +41,12 @@
 
   <!-- Site-local utility -->
   <utility factory=".utilities.ShadowTreeTool" />
- 
+
+  <adapter
+    factory=".adapters.ObjectSecurity"
+    provides=".interfaces.IObjectSecurity"
+    for="Products.CMFCore.interfaces.IContentish
+	 Products.CMFCore.interfaces.ICatalogTool"
+    />
+      
 </configure>
