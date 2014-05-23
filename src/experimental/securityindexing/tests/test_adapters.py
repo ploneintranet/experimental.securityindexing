@@ -112,7 +112,7 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
             for b in self.catalog.unrestrictedSearchResults(path='/plone/a')
         })
 
-        api.content.delete(self.portal['a']['b']['c']['d'])
+        api.content.delete(obj=self.portal['a']['b']['c']['d'])
         check_shadowtree_integrity(st_root, {
             tuple(b.getPath().split('/'))
             for b in self.catalog.unrestrictedSearchResults(path='/plone/a')
@@ -122,7 +122,7 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
         self._set_default_workflow_chain('plone_workflow')
         self._populate()
         for obj in self.folders_by_path.values():
-            api.content.transition(obj, 'hide')
+            api.content.transition(obj=obj, transition='hide')
 
         # Logout, check that Anonymous cannot access any contents.
         pa_testing.logout()
@@ -135,8 +135,8 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
         # catalog search results.
         self._private_content_with_default_workflow()
         pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
-        api.content.transition(self.folders_by_path['/a'], 'show')
-
+        api.content.transition(obj=self.folders_by_path['/a'],
+                               transition='show')
         # Logout, check that we can access the item that's
         # been shown and nothing else.
         pa_testing.logout()

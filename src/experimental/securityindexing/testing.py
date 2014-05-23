@@ -52,13 +52,16 @@ class TestCaseMixin(object):
     """Base mixin class for unittest.TestCase."""
 
     def _set_default_workflow_chain(self, workflow_id):
-        wftool = api.portal.get_tool(b'portal_workflow')
+        wftool = api.portal.get_tool(name=b'portal_workflow')
         wftool.setDefaultChain(workflow_id)
+
+    def _id_for_path(self, path):
+        return path.split('/')[-1]
 
     def _create_folder(self, path, local_roles,
                        userid=pa_testing.TEST_USER_ID,
                        block=_marker):
-        id = path.split('/')[-1]
+        id = self._id_for_path(path)
         parent_path = filter(bool, path.split('/')[:-1])
         if parent_path:
             obj_path = b'/%s' % '/'.join(parent_path)
@@ -126,7 +129,7 @@ class TestCaseMixin(object):
 
     @property
     def catalog(self):
-        return api.portal.get_tool(b'portal_catalog')
+        return api.portal.get_tool(name=b'portal_catalog')
 
     def setUp(self):
         self.folders_by_path = {}
