@@ -29,15 +29,17 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
                        search_operator=b'or'):
         pa_testing.logout()
         pa_testing.login(self.portal, self.query_user.getUserName())
+        path_prefix = b'/%s' % (self.portal.getId(),)
         brains = self.catalog.unrestrictedSearchResults({
+            b'path': path_prefix,
             b'allowedRolesAndUsers': {
                 b'query': local_roles,
                 b'operator': search_operator
             }
         })
-        prefix = b'/%s' % self.portal.getId()
-        paths = set(brain.getPath().replace(prefix, b'') for brain in brains)
-        self.assertSetEqual(paths, set(expected_paths))
+        paths = set(brain.getPath().replace(path_prefix, b'')
+                    for brain in brains)
+        self._check_paths_equal(paths, expected_paths)
 
     def _populate(self):
         self.folders_by_path.clear()
@@ -227,30 +229,44 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
         self.assertSetEqual(actual, set(self.folders_by_path))
 
 
-class TestObjectSecurityAT(ObjectSecurityTestsMixin, unittest.TestCase):
+class TestObjectSecurity(ObjectSecurityTestsMixin, unittest.TestCase):
 
-    layer = testing.AT_INTEGRATION
+    layer = testing.INTEGRATION
 
 
-class MonkeyPatchedMixin(object):
+class PatchedMixin(object):
 
     def _call_mut(self, obj, **kw):
         obj.reindexObjectSecurity(**kw)
 
 
-class TestObjectSecurityATPatched(MonkeyPatchedMixin, TestObjectSecurityAT):
-    """Run the tests with the monkey patched method."""
+class TestObjectSecurityPactched(PatchedMixin, TestObjectSecurity):
+    """Run the tests under Archertypes with the monkey patched method."""
 
 
-class TestObjectSecurityDX(ObjectSecurityTestsMixin, unittest.TestCase):
+from plone.app.contenttypes.testing import (
+    PLONE_APP_CONTENTTYPES_FIXTURE,
+)
 
-    layer = testing.DX_INTEGRATION
-
-    def setUp(self):
-        # Delete a fodler created by the p.a{contenttypes,event} fixtures
-        super(TestObjectSecurityDX, self).setUp()
-        api.content.delete(obj=self.portal['robot-test-folder'])
+DX_INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(PLONE_APP_CONTENTTYPES_FIXTURE, testing.FIXTURE),
+    name=b'SecurityIndexingLayerDDCT:Integration'
+)
 
 
-class TestObjectSecurityDXPatched(MonkeyPatchedMixin, TestObjectSecurityDX):
-    """Run the tests with the monkey patched method."""
+class TestObjectSecurityDDCT(ObjectSecurityTestsMixin, unittest.TestCase):
+
+    layer = DX_INTEGRATION
+
+    def _check_paths_equal(self, paths, expected_paths):
+        # Ignore robot-test-folder created by the
+        # p.a.{event,contenttypes} fixture(s)
+        exclude_path = b'/robot-test-folder'
+        if exclude_path in paths:
+            paths.remove(exclude_path)
+        check = super(TestObjectSecurityDDCT, self)._check_paths_equal
+        check(paths, expected_paths)
+
+
+class TestObjectSecurityDDCTPactched(PatchedMixin, TestObjectSecurityDDCT):
+    """Run the tests under Dexterity with the monkey patched method."""

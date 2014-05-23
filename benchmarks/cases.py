@@ -1,5 +1,4 @@
 """Abuse zope.testrunner layers for the purpose of generating benchmarks.
-
 Here we attempt to do some rudimentary testing against
 Plone sites setup with Archetypes (AT) and Dexterity (DX)
 via plone.app.contenttypes.
@@ -18,6 +17,7 @@ import cProfile
 import datetime
 import functools
 import json
+import logging
 import os
 import unittest
 import string
@@ -31,12 +31,17 @@ from plone.app.contenttypes.testing import (
 import plone.app.testing as pa_testing
 import transaction
 
-from . import testing
+from experimental.securityindexing import testing
 
 
 N_SIBLINGS = int(os.environ.get(b'BENCHMARK_N_SIBLINGS', 2))
 
 N_LEVELS = int(os.environ.get(b'BENCHMARK_N_LEVELS', 2))
+
+logger = logging.getLogger(testing.__package__)
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+logger.addHandler(console_handler)
 
 
 class Timings(object):
@@ -73,7 +78,7 @@ class Timings(object):
         brains = pc.searchResults(path=bench_root_path)
         n_objects = len(brains)
         qi_tool = api.portal.get_tool(b'portal_quickinstaller')
-        pkg_name = 'experimental.securityindexing'
+        pkg_name = b'experimental.securityindexing'
         is_installed = qi_tool.isProductInstalled(pkg_name)
         classifier_fmt = b'{.content_type_identifier} {suffix}'
         suffix = b'Installed' if is_installed else b'Original'
@@ -103,7 +108,7 @@ class Timings(object):
 
     @property
     def content_type_identifier(self):
-        if self.context.meta_type.startswith('Dexterity'):
+        if self.context.meta_type.startswith(b'Dexterity'):
             return b'Dexterity'
         return b'Archetypes'
 
@@ -225,15 +230,31 @@ class BenchmarkATLayer(BenchmarkLayerMixin, pa_testing.PloneSandboxLayer):
 class BenchmarkDXLayer(BenchmarkLayerMixin, pa_testing.PloneSandboxLayer):
     """A layer which ensure Dexteity is used for the default content."""
 
-    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE,)
+    defaultBases = (PLONE_APP_CONTENTTYPES_FIXTURE,
+                    pa_testing.PLONE_FIXTURE)
 
     def _sanity_checks(self):
         assert self.top.meta_type.startswith(b'Dexterity')
 
+    def setUpPloneSite(self, portal):
+        # Delete a fodler created by the p.a{contenttypes,event} fixtures
+        api.content.delete(obj=portal['robot-test-folder'])
+        super(BenchmarkDXLayer, self).setUpPloneSite(portal)
 
-AT_FIXTURE = BenchmarkATLayer()
 
-DX_FIXTURE = BenchmarkDXLayer()
+VANILLA_AT_FIXTURE = BenchmarkATLayer()
+
+INSTALLED_AT_FIXTURE = testing.SecurityIndexingLayer(
+    bases=(VANILLA_AT_FIXTURE,),
+    name=b'SecurityIndexingLayerAT:Integration'
+)
+
+VANILLA_DX_FIXTURE = BenchmarkDXLayer()
+
+INSTALLED_DX_FIXTURE = testing.SecurityIndexingLayer(
+    bases=(VANILLA_DX_FIXTURE,),
+    name=b'SecurityIndexingLayerDX:Integration'
+)
 
 # [A-Z]{3,3} Prefixing of layer names here
 # is done to force ordering of layer executation
@@ -242,19 +263,22 @@ DX_FIXTURE = BenchmarkDXLayer()
 # unless DX tests run first. (p.a.event testing problem?)
 
 VANILLA_AT_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_FIXTURE,),
+    bases=(VANILLA_AT_FIXTURE,),
     name=b'KKK_VanillaAT:Integration'
 )
+
 VANILLA_DX_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_FIXTURE,),
+    bases=(VANILLA_DX_FIXTURE,),
     name=b'JJJ_VanillaDX:Integration'
 )
+
 INSTALLED_AT_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_FIXTURE, testing.AT_FIXTURE),
+    bases=(INSTALLED_AT_FIXTURE,),
     name=b'ZZZ_InstalledAT:Integration'
 )
+
 INSTALLED_DX_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_FIXTURE, testing.DX_FIXTURE),
+    bases=(INSTALLED_DX_FIXTURE,),
     name=b'YYY_InstalledDX:Integration'
 )
 

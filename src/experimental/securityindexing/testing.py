@@ -1,6 +1,5 @@
 from importlib import import_module
 
-from plone.app.contenttypes.testing import PLONE_APP_CONTENTTYPES_FIXTURE
 import plone.api as api
 import plone.app.testing as pa_testing
 
@@ -10,23 +9,20 @@ from .interfaces import IShadowTreeTool
 _marker = object()
 
 
-class SecurityIndexingBaseLayer(pa_testing.PloneWithPackageLayer):
+class SecurityIndexingLayer(pa_testing.PloneWithPackageLayer):
 
-    @classmethod
-    def create(cls, bases, name_suffix):
-        name = b'{name}({suffix})'.format(name=cls.__name__,
-                                          suffix=name_suffix)
-        return cls(
-            name=name,
-            bases=bases,
-            zcml_filename=b'configure.zcml',
-            zcml_package=import_module(__package__),
-            additional_z2_products=(__package__,),
-            gs_profile_id=b'%s:default' % (__package__,)
-        )
-
-
-class SecurityIndexingLayer(SecurityIndexingBaseLayer):
+    def __init__(self, bases=(), name=None):
+        init = super(SecurityIndexingLayer, self).__init__
+        if bases is ():
+            bases = (pa_testing.PLONE_FIXTURE,)
+        if name is None:
+            name = type(self).__name__
+        init(bases=bases,
+             name=name,
+             zcml_filename=b'configure.zcml',
+             zcml_package=import_module(__package__),
+             additional_z2_products=(__package__,),
+             gs_profile_id=b'%s:default' % (__package__,))
 
     def tearDownZope(self, app):
         # This does not call Extensions.Install.uninstall for some reason?
@@ -44,30 +40,11 @@ class SecurityIndexingLayer(SecurityIndexingBaseLayer):
         self.applyProfile(portal, b'%s:uninstall' % (__package__,))
 
 
-AT_FIXTURE = SecurityIndexingLayer.create(
-    (pa_testing.PLONE_FIXTURE,),
-    b'AT'
-)
+FIXTURE = SecurityIndexingLayer()
 
-DX_FIXTURE = SecurityIndexingLayer.create(
-    (PLONE_APP_CONTENTTYPES_FIXTURE,),
-    b'DX'
-)
-
-# [A-Z]{3,3} Prefixing of layer names here
-# is done to force ordering of layer executation
-# by zope.testrunner, such that p.a.testing does not choke.
-# For some reason DemoStorage created by p.testing.z2 goes AWOL
-# unless DX tests run first. (p.a.event testing problem?)
-
-AT_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(AT_FIXTURE,),
-    name=b'ZZZ_ATLayer:Integration'
-)
-
-DX_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(DX_FIXTURE,),
-    name=b'YYY_DXLayer:Integration'
+INTEGRATION = pa_testing.IntegrationTesting(
+    bases=(FIXTURE,),
+    name=b'SecurityIndexingLayer:Integration'
 )
 
 
@@ -75,7 +52,7 @@ class TestCaseMixin(object):
     """Base mixin class for unittest.TestCase."""
 
     def _set_default_workflow_chain(self, workflow_id):
-        wftool = api.portal.get_tool('portal_workflow')
+        wftool = api.portal.get_tool(b'portal_workflow')
         wftool.setDefaultChain(workflow_id)
 
     def _create_folder(self, path, local_roles,
@@ -84,12 +61,12 @@ class TestCaseMixin(object):
         id = path.split('/')[-1]
         parent_path = filter(bool, path.split('/')[:-1])
         if parent_path:
-            obj_path = '/%s' % '/'.join(parent_path)
+            obj_path = b'/%s' % '/'.join(parent_path)
             parent = api.content.get(path=obj_path)
         else:
             parent = self.portal
         folder = api.content.create(container=parent,
-                                    type='Folder',
+                                    type=b'Folder',
                                     id=id)
         api.user.grant_roles(username=userid,
                              obj=folder,
@@ -104,19 +81,17 @@ class TestCaseMixin(object):
         st = portal.getSiteManager().getUtility(IShadowTreeTool)
         return st.root
 
+    def _check_paths_equal(self, paths, expected_paths):
+        self.assertSetEqual(paths, set(expected_paths))
+
     def _check_shadowtree_paths(self, root, expected_paths):
         shadow_paths = {
             node.physical_path
             for node in root.descendants(ignore_block=True)
         }
-        # Remove the robot-test-folder created by the
-        # p.a.{event,conenttypes} fixture.
-        exclude = ('', self.portal.getId(), 'robot-test-folder')
-        if exclude in expected_paths:
-            expected_paths.remove(exclude)
         # exclude folders created by other fixtures (p.a.event in this case)
         # shadow_paths.remove(('', 'plone', 'robot-test-folder'))
-        self.assertSetEqual(shadow_paths, expected_paths)
+        self._check_paths_equal(shadow_paths, expected_paths)
 
     def _check_shadowtree_nodes_have_security_info(self):
         portal_id = self.portal.getId()

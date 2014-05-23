@@ -24,9 +24,6 @@ class _Dummy(object):
 
     __str__ = __repr__  # pragma: no cover
 
-    def getId(self):
-        return self.id
-
     def getPhysicalPath(self):
         return tuple(self.path.split(b'/'))
 

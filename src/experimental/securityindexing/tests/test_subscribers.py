@@ -6,7 +6,9 @@ import plone.app.testing as pa_testing
 from .. import testing
 
 
-class SubscriberTestsMixin(testing.TestCaseMixin):
+class SubscriberTests(testing.TestCaseMixin, unittest.TestCase):
+
+    layer = testing.INTEGRATION
 
     def _call_mut(self, *args, **kw):
         # Subscribers are automatically invoked
@@ -26,7 +28,7 @@ class SubscriberTestsMixin(testing.TestCaseMixin):
         create_folder(b'/x/b/c/d', [b'Reviewer'], userid='bob')
 
     def setUp(self):
-        super(SubscriberTestsMixin, self).setUp()
+        super(SubscriberTests, self).setUp()
         portal = self.portal
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
@@ -59,13 +61,3 @@ class SubscriberTestsMixin(testing.TestCaseMixin):
         self._check_shadowtree_integrity()
         api.content.delete(self.folders_by_path[b'/x'])
         self._check_shadowtree_integrity()
-
-
-class TestSubscribersAT(SubscriberTestsMixin, unittest.TestCase):
-
-    layer = testing.AT_INTEGRATION
-
-
-class TestSubscribersDX(SubscriberTestsMixin, unittest.TestCase):
-
-    layer = testing.DX_INTEGRATION

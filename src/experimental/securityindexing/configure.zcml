@@ -45,8 +45,8 @@
   <adapter
     factory=".adapters.ObjectSecurity"
     provides=".interfaces.IObjectSecurity"
-    for="Products.CMFCore.interfaces.IContentish
+    for="Products.CMFCore.interfaces.ICatalogAware
 	 Products.CMFCore.interfaces.ICatalogTool"
     />
-      
+
 </configure>

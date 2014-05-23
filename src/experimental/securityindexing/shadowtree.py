@@ -145,7 +145,12 @@ class Node(Persistent):
         self.physical_path = obj.getPhysicalPath()
         self.block_inherit_roles = self.get_local_roles_block(obj)
         self.token = self.create_security_token(obj)
-        assert self.id == obj.getId()
+        assert self.physical_path == obj.getPhysicalPath(), (
+            b'%s != %s' % (
+                self.physical_path,
+                obj.getPhysicalPath()
+            )
+        )
 
     def descendants(self, ignore_block=False):
         """Generates descendant nodes.
