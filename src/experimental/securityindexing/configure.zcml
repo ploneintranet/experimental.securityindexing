@@ -29,8 +29,8 @@
 
   <subscriber
     for="Products.CMFCore.interfaces.IContentish
-         zope.lifecycleevent.interfaces.IObjectAddedEvent"
-    handler=".subscribers.on_object_added"
+         zope.lifecycleevent.interfaces.IObjectMovedEvent"
+    handler=".subscribers.on_object_moved"
     />
 
   <subscriber

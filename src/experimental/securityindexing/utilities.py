@@ -8,6 +8,7 @@ from .interfaces import IShadowTreeRoot, IShadowTreeTool
 
 @interface.implementer(IShadowTreeTool)
 class ShadowTreeTool(object):
+    u"""A tool to provide access to the ``shadow tree``."""
 
     _pkey = __package__
 
@@ -19,7 +20,7 @@ class ShadowTreeTool(object):
 
     @classmethod
     def delete_from_storage(cls, portal):
-        u"""Delete the shadownode tree from persistent storage.
+        u"""Delete the shadow tree from persistent storage.
 
         :param portal: The Plone site portal object.
         """

@@ -8,13 +8,14 @@ from .utils import FakePlonePortal
 class TestShadowTreeTool(unittest.TestCase):
 
     _fake_portal = FakePlonePortal()
+    _package = b'experimental.securityindexing'
 
     plone_api_patcher_config = {
-        'portal.get.return_value': _fake_portal
+        b'portal.get.return_value': _fake_portal
     }
 
     plone_api_patcher = mock.patch(
-        'experimental.securityindexing.utilities.api',
+        b'%s.utilities.api' % _package,
         **plone_api_patcher_config
     )
 
@@ -51,8 +52,8 @@ class TestShadowTreeTool(unittest.TestCase):
 
         # ensure the root node is stored.
         self._make_one().root
-        self.assertIn('experimental.securityindexing', storage)
+        self.assertIn(self._package, storage)
 
         # check it's gone when it's supposed to be.
         tool_cls.delete_from_storage(self._fake_portal)
-        self.assertNotIn('experimental.securityindexing', storage)
+        self.assertNotIn(self._package, storage)
