@@ -192,7 +192,7 @@ class TestShadowTreeNode(unittest.TestCase):
         self.assertIn(b'a', root, list(root.keys()))
         self.assertEqual(root[b'a'].id, leaf.id)
         self.assertIsNone(leaf.__parent__.__parent__)
-        self.assertIsNone(leaf.physical_path)
+        self.assertEqual(leaf.physical_path, ('', 'plone', 'a'))
         self.assertEqual(leaf.id, b'a')
         self.assertIsNone(leaf.token)
         self.assertFalse(leaf.block_inherit_roles)
@@ -215,7 +215,7 @@ class TestShadowTreeNode(unittest.TestCase):
         self.assertFalse(a.block_inherit_roles)
 
         self.assertEqual(leaf.__parent__.id, b'b')
-        self.assertIsNone(leaf.physical_path)
+        self.assertEqual(leaf.physical_path, ('', 'plone', 'a', 'b', 'c'))
         self.assertIsNone(leaf.token)
         self.assertFalse(leaf.block_inherit_roles)
 
