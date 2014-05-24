@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<import-steps>
+  <import-step id="experimental_securityindexing_various" version="001"
+               handler="experimental.securityindexing.setuphandlers.import_various"
+               title="Synchronise object security with portal catalog.">
+ </import-step>
+</import-steps>

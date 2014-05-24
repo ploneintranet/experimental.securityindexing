@@ -1,9 +1,9 @@
 from plone import api
-from zope import interface
+from zope import component, interface
 from zope.annotation.interfaces import IAnnotations
 
 from . import shadowtree
-from .interfaces import IShadowTreeRoot, IShadowTreeTool
+from .interfaces import IObjectSecurity, IShadowTreeRoot, IShadowTreeTool
 
 
 @interface.implementer(IShadowTreeTool)
@@ -35,3 +35,17 @@ class ShadowTreeTool(object):
         root_node = storage.setdefault(self._pkey, shadowtree.Node())
         interface.alsoProvides(root_node, IShadowTreeRoot)
         return root_node
+
+    def sync(self, catalog):
+        root = self.root
+        for brain in catalog.unrestrictedSearchResults(path=b'/'):
+            brain_path = brain.getPath()
+            try:
+                root.traverse(brain_path)
+            except LookupError:
+                obj = brain.getObject()
+                node = root.ensure_ancestry_to(obj)
+                obj_sec = component.getMultiAdapter((obj, catalog),
+                                                    IObjectSecurity)
+                obj_sec._reindex_object(obj)
+                node.update_security_info(obj)

@@ -13,17 +13,17 @@
 
   <genericsetup:registerProfile
     name="default"
-    title="Installs securityindexing optimisations"
+    title="Object security re-indexing optimisations"
     directory="profiles/default"
-    description="Extension profile"
+    description="Installs optimisations for re-indexing of object security."
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
 
   <genericsetup:registerProfile
     name="uninstall"
-    title="experimental.securityindexing: uninstall"
+    title="Object security re-indexing optimisations"
     directory="profiles/uninstall"
-    description="Uninstalls the experimental.securityindexing package."
+    description="Uninstalls utilities used for re-indexing of object security."
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
 

@@ -144,7 +144,10 @@ class ObjectSecurity(object):
 
     def _reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
-        reindex(obj, idxs=self._index_ids, update_metadata=0)
+        # need to contruct UID otherwise reindexObject will ask catalog
+        # tool for __url which we don't have, and raise TypeError
+        uid = b'/'.join(obj.getPhysicalPath())
+        reindex(obj, idxs=self._index_ids, update_metadata=0, uid=uid)
 
     def _to_indexable(self, obj):
         return component.getMultiAdapter((obj, self.catalog_tool),
