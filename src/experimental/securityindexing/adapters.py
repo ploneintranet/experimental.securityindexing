@@ -142,7 +142,7 @@ class ObjectSecurity(object):
         sm = portal.getSiteManager()
         self._st_root = sm.getUtility(IShadowTreeTool).root
 
-    def _reindex_object(self, obj):
+    def reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
         # need to contruct UID otherwise reindexObject will ask catalog
         # tool for __url which we don't have, and raise TypeError
@@ -164,7 +164,7 @@ class ObjectSecurity(object):
         to be re-indexed.
         """
         obj = self.context
-        reindex_object = self._reindex_object
+        reindex_object = self.reindex_object
         to_indexable = self._to_indexable
         root = self._st_root
         traverse = obj.unrestrictedTraverse

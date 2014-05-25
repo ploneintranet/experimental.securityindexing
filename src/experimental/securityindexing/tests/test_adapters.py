@@ -1,6 +1,9 @@
 import unittest
 
 from plone import api
+from plone.app.contenttypes.testing import (
+    PLONE_APP_CONTENTTYPES_FIXTURE,
+)
 from zope.interface.verify import verifyObject, verifyClass
 import plone.app.testing as pa_testing
 
@@ -58,48 +61,48 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
     def setUp(self):
         super(ObjectSecurityTestsMixin, self).setUp()
         portal = self.portal
-        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
+        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, [b'Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
-        self._set_default_workflow_chain('intranet_workflow')
+        self._set_default_workflow_chain(b'intranet_workflow')
         # Create a user that never is owns
         # any objects created by this test.
         self.query_user = api.user.create(
-            email='querier-test-user@netsight.co.uk',
-            username='querier-test-user'
+            email=b'querier-test-user@netsight.co.uk',
+            username=b'querier-test-user'
         )
-        self._create_members(['matt', 'liz', 'guido'])
-        api.user.grant_roles(username='matt', roles=[
-            'Member', 'Contributor', 'Reader', 'Editor'
+        self._create_members([b'matt', b'liz', b'guido'])
+        api.user.grant_roles(username=b'matt', roles=[
+            b'Member', b'Contributor', b'Reader', b'Editor'
         ])
         pa_testing.setRoles(self.portal,
                             self.query_user.getUserId(),
-                            ['Manager'])
+                            [b'Manager'])
 
     def test_interface_conformance(self):
         adapter_cls = self._get_target_class()
         verifyClass(IObjectSecurity, adapter_cls)
-        folder = self._create_folder('/a', ['Reader'], userid='matt')
+        folder = self._create_folder(b'/a', [b'Reader'], userid=b'matt')
         verifyObject(IObjectSecurity, self._make_one(folder, self.catalog))
 
     def test_allowedRolesAndUsers(self):
         self._populate()
         check_catalog = self._check_catalog
-        check_catalog(['user:' + self.query_user.getUserId()], set())
-        check_catalog(['user:matt'], {
-            '/a',
-            '/a/b',
-            '/a/b/c',
-            '/a/b/c/a',
-            '/a/b/c/d',
+        check_catalog([b'user:' + self.query_user.getUserId()], set())
+        check_catalog([b'user:matt'], {
+            b'/a',
+            b'/a/b',
+            b'/a/b/c',
+            b'/a/b/c/a',
+            b'/a/b/c/d',
         })
-        check_catalog(['user:liz'], {
-            '/a/b/c/e',
-            '/a/b/c/e/f',
-            '/a/b/c/e/f/g',
+        check_catalog([b'user:liz'], {
+            b'/a/b/c/e',
+            b'/a/b/c/e/f',
+            b'/a/b/c/e/f/g',
         })
-        check_catalog(['Reviewer'], set())
-        check_catalog(['Editor'], set(self.folders_by_path))
-        check_catalog(['Reader'], set(self.folders_by_path))
+        check_catalog([b'Reviewer'], set())
+        check_catalog([b'Editor'], set(self.folders_by_path))
+        check_catalog([b'Reader'], set(self.folders_by_path))
 
     def test_shadowtree_integrity(self):
         st_root = self._get_shadowtree_root()
@@ -108,21 +111,21 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
         check_shadowtree_integrity(st_root, set())
         self._populate()
         check_shadowtree_integrity(st_root, {
-            tuple(b.getPath().split('/'))
-            for b in self.catalog.unrestrictedSearchResults(path='/plone/a')
+            tuple(b.getPath().split(b'/'))
+            for b in self.catalog.unrestrictedSearchResults(path=b'/plone/a')
         })
 
-        api.content.delete(obj=self.portal['a']['b']['c']['d'])
+        api.content.delete(obj=self.portal[b'a'][b'b'][b'c'][b'd'])
         check_shadowtree_integrity(st_root, {
-            tuple(b.getPath().split('/'))
-            for b in self.catalog.unrestrictedSearchResults(path='/plone/a')
+            tuple(b.getPath().split(b'/'))
+            for b in self.catalog.unrestrictedSearchResults(path=b'/plone/a')
         })
 
     def _private_content_with_default_workflow(self):
-        self._set_default_workflow_chain('plone_workflow')
+        self._set_default_workflow_chain(b'plone_workflow')
         self._populate()
         for obj in self.folders_by_path.values():
-            api.content.transition(obj=obj, transition='hide')
+            api.content.transition(obj=obj, transition=b'hide')
 
         # Logout, check that Anonymous cannot access any contents.
         pa_testing.logout()
@@ -135,13 +138,13 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
         # catalog search results.
         self._private_content_with_default_workflow()
         pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
-        api.content.transition(obj=self.folders_by_path['/a'],
+        api.content.transition(obj=self.folders_by_path[b'/a'],
                                transition='show')
         # Logout, check that we can access the item that's
         # been shown and nothing else.
         pa_testing.logout()
         brains = self.catalog.searchResults()
-        self.assertEqual(brains[0].getPath(), '/plone/a')
+        self.assertEqual(brains[0].getPath(), b'/plone/a')
 
     def test_reindex_on_grant_roles(self):
         pa_testing.login(self.portal, 'matt')
@@ -172,60 +175,60 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
         actual = {b.getPath().replace('/plone', '') for b in brains}
         self.assertTrue(actual)
         self.assertSetEqual(actual, {
-            '/a/b/c/e',
-            '/a/b/c/e/f',
-            '/a/b/c/e/f/g'
+            b'/a/b/c/e',
+            b'/a/b/c/e/f',
+            b'/a/b/c/e/f/g'
         })
         # Grant liz access to a node higher up
-        obj = self.folders_by_path['/a/b/c']
-        api.user.grant_roles(username='liz', obj=obj, roles=['Reader'])
+        obj = self.folders_by_path[b'/a/b/c']
+        api.user.grant_roles(username=b'liz', obj=obj, roles=[b'Reader'])
         self._call_mut(obj)
 
         # Revoke liz's original access to e (and descendants)
-        obj = self.folders_by_path['/a/b/c/e']
+        obj = self.folders_by_path[b'/a/b/c/e']
 
-        api.user.revoke_roles(username='liz', obj=obj, roles=['Reader'])
+        api.user.revoke_roles(username=b'liz', obj=obj, roles=[b'Reader'])
         self._call_mut(obj)
 
         # Check liz can see everything under her granted
         # access *up until a local role block*
         brains = self.catalog.searchResults()
-        actual = {b.getPath().replace('/plone', '') for b in brains}
+        actual = {b.getPath().replace(b'/plone', b'') for b in brains}
         self.assertEqual(actual, {
-            '/a/b/c',
-            '/a/b/c/a',
-            '/a/b/c/d'
+            b'/a/b/c',
+            b'/a/b/c/a',
+            b'/a/b/c/d'
         })
 
     def test_reindex_on_local_role_block_removal(self):
         self._private_content_with_default_workflow()
-        obj = self.folders_by_path['/a']
-        api.user.grant_roles(username='guido', obj=obj, roles=['Reader'])
+        obj = self.folders_by_path[b'/a']
+        api.user.grant_roles(username=b'guido', obj=obj, roles=[b'Reader'])
         self._call_mut(obj)
         pa_testing.logout()
 
-        pa_testing.login(self.portal, 'guido')
+        pa_testing.login(self.portal, b'guido')
         brains = self.catalog.searchResults()
-        actual = {b.getPath().replace('/plone', '') for b in brains}
+        actual = {b.getPath().replace(b'/plone', b'') for b in brains}
         self.assertTrue(actual)
         self.assertSetEqual(actual, {
-            '/a',
-            '/a/b',
-            '/a/b/c',
-            '/a/b/c/a',
-            '/a/b/c/d'
+            b'/a',
+            b'/a/b',
+            b'/a/b/c',
+            b'/a/b/c/a',
+            b'/a/b/c/d'
         })
         pa_testing.logout()
 
         pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
-        obj = self.folders_by_path['/a/b/c/e']
+        obj = self.folders_by_path[b'/a/b/c/e']
         obj.__ac_local_roles_block__ = None
         self._call_mut(obj)
         pa_testing.logout()
 
-        pa_testing.login(self.portal, 'guido')
+        pa_testing.login(self.portal, b'guido')
         brains = self.catalog.searchResults()
-        actual = {b.getPath().replace('/plone', '') for b in brains}
+        actual = {b.getPath().replace(b'/plone', b'') for b in brains}
         self.assertSetEqual(actual, set(self.folders_by_path))
 
 
@@ -244,10 +247,6 @@ class TestObjectSecurityPactched(PatchedMixin, TestObjectSecurity):
     """Run the tests under Archertypes with the monkey patched method."""
 
 
-from plone.app.contenttypes.testing import (
-    PLONE_APP_CONTENTTYPES_FIXTURE,
-)
-
 DX_INTEGRATION = pa_testing.IntegrationTesting(
     bases=(PLONE_APP_CONTENTTYPES_FIXTURE, testing.FIXTURE),
     name=b'SecurityIndexingLayerDDCT:Integration'
@@ -255,6 +254,7 @@ DX_INTEGRATION = pa_testing.IntegrationTesting(
 
 
 class TestObjectSecurityDDCT(ObjectSecurityTestsMixin, unittest.TestCase):
+    u"""Object security tests with dexterity-default contenttypes in play."""
 
     layer = DX_INTEGRATION
 
@@ -269,4 +269,4 @@ class TestObjectSecurityDDCT(ObjectSecurityTestsMixin, unittest.TestCase):
 
 
 class TestObjectSecurityDDCTPactched(PatchedMixin, TestObjectSecurityDDCT):
-    """Run the tests under Dexterity with the monkey patched method."""
+    u"""Run the tests under Dexterity with the monkey patched method."""

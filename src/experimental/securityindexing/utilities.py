@@ -1,3 +1,7 @@
+from collections import namedtuple
+
+from AccessControl import ClassSecurityInfo
+from OFS.SimpleItem import SimpleItem
 from plone import api
 from zope import component, interface
 from zope.annotation.interfaces import IAnnotations
@@ -6,11 +10,26 @@ from . import shadowtree
 from .interfaces import IObjectSecurity, IShadowTreeRoot, IShadowTreeTool
 
 
+class IntegrityInfo(namedtuple(b'IntegrityInfo', (
+        b'catalog_paths',
+        b'n_cataloged',
+        b'shadowtree_paths',
+        b'n_shadowed'))):
+
+    def is_integral(self):
+        return self.n_cataloged == self.n_shadowed
+
+
 @interface.implementer(IShadowTreeTool)
-class ShadowTreeTool(object):
-    u"""A tool to provide access to the ``shadow tree``."""
+class ShadowTreeTool(SimpleItem):
+    b"""Maintains a shadowtree of hints for controlling
+    object security indexing operations.
+    """
 
     _pkey = __package__
+    _synchronised = False
+    title = __doc__.strip().rstrip(b'.')
+    security = ClassSecurityInfo()
 
     @staticmethod
     def _get_storage(portal=None):
@@ -28,6 +47,24 @@ class ShadowTreeTool(object):
         if cls._pkey in storage:
             del storage[cls._pkey]
 
+    def integrity_info(self):
+        root = self.root
+        descendants = list(root.descendants(ignore_block=True))
+        path = api.portal.get().getPhysicalPath()
+        catalog = api.portal.get_tool(name=b'portal_catalog')
+        brains = catalog.unrestrictedSearchResults(path=path)
+        catalog_paths = {brain.getPath() for brain in brains}
+        shadowtree_paths = {
+            b'/'.join(node.physical_path)
+            for node in descendants
+            if node.physical_path is not None
+        }
+        info = IntegrityInfo(catalog_paths=catalog_paths,
+                             n_cataloged=len(brains),
+                             shadowtree_paths=shadowtree_paths,
+                             n_shadowed=len(shadowtree_paths))
+        return info
+
     @property
     def root(self):
         u"""Lazily return the root node if it's not yet been created."""
@@ -36,9 +73,16 @@ class ShadowTreeTool(object):
         interface.alsoProvides(root_node, IShadowTreeRoot)
         return root_node
 
-    def sync(self, catalog):
+    def sync(self, catalog):  # pragma: no cover
+        u"""Synchronise security info of site content into the shadow tree.
+
+        This method may be expensive dependant upon the site of the site.
+
+        :param catalog: The catalog to obtain content from.
+        """
         root = self.root
-        for brain in catalog.unrestrictedSearchResults(path=b'/'):
+        brains = catalog.unrestrictedSearchResults(path=b'/')
+        for brain in brains:
             brain_path = brain.getPath()
             try:
                 root.traverse(brain_path)
@@ -47,5 +91,5 @@ class ShadowTreeTool(object):
                 node = root.ensure_ancestry_to(obj)
                 obj_sec = component.getMultiAdapter((obj, catalog),
                                                     IObjectSecurity)
-                obj_sec._reindex_object(obj)
+                obj_sec.reindex_object(obj)
                 node.update_security_info(obj)

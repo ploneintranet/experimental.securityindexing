@@ -1,3 +1,4 @@
+from __future__ import print_function
 import io
 import logging
 
@@ -8,20 +9,21 @@ import experimental.securityindexing.utilities as esu
 
 
 def uninstall(portal, reinstall=False):
-    if reinstall:  # pragma: no cover
-        return
     pkg_name = esu.__package__
     logger = logging.getLogger(pkg_name)
     out = io.BytesIO()
-    msg = b'%s: Removing shadowtree... ' % (pkg_name,)
-    logger.info(msg)
-    out.write(msg)
     try:
         esu.ShadowTreeTool.delete_from_storage(portal)
     except Exception as e:  # pragma: no cover
-        out.write(b'failed (traceback follows):')
-        out.write(e)
+        print(b'failed (traceback follows):', file=out)
+        print(e, file=out)
         logger.exception(e)
     else:
-        out.write(b'done.')
+        msg = b'Removed shadowtree...'
+        logger.info(msg)
+        print(msg, file=out)
+    if reinstall:  # pragma: no cover
+        portal_setup = portal.portal_setup
+        default_profile_id = b'profile-%s:default' % (pkg_name,)
+        portal_setup.runAllImportStepsFromProfile(default_profile_id)
     return out.getvalue()
