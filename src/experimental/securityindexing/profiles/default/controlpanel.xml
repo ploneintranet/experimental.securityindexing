@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<object
+    name="portal_controlpanel"
+    xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+    i18n:domain="experimental.securityindexing"
+    purge="False">
+
+    <configlet
+        title="Experimental Security Indexing"
+        action_id="experimental.securityindexing"
+        appId="experimental.securityindexing"
+        category="Products"
+        url_expr="string:${portal_url}/portal_shadowtree"
+        visible="True"
+        i18n:attributes="title">
+        <permission>Manage portal</permission>
+    </configlet>
+
+</object>
