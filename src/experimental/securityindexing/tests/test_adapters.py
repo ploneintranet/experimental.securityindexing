@@ -1,12 +1,10 @@
 import unittest
 
 from plone import api
-from plone.app.contenttypes.testing import (
-    PLONE_APP_CONTENTTYPES_FIXTURE,
-)
 from zope.interface.verify import verifyObject, verifyClass
 import plone.app.testing as pa_testing
 
+from . import dx
 from .. import testing
 from ..interfaces import IObjectSecurity
 
@@ -243,20 +241,14 @@ class PatchedMixin(object):
         obj.reindexObjectSecurity(**kw)
 
 
-class TestObjectSecurityPactched(PatchedMixin, TestObjectSecurity):
+class TestObjectSecurityPatched(PatchedMixin, TestObjectSecurity):
     """Run the tests under Archertypes with the monkey patched method."""
-
-
-DX_INTEGRATION = pa_testing.IntegrationTesting(
-    bases=(PLONE_APP_CONTENTTYPES_FIXTURE, testing.FIXTURE),
-    name=b'SecurityIndexingLayerDDCT:Integration'
-)
 
 
 class TestObjectSecurityDDCT(ObjectSecurityTestsMixin, unittest.TestCase):
     u"""Object security tests with dexterity-default contenttypes in play."""
 
-    layer = DX_INTEGRATION
+    layer = dx.INTEGRATION
 
     def _check_paths_equal(self, paths, expected_paths):
         # Ignore robot-test-folder created by the
@@ -268,5 +260,5 @@ class TestObjectSecurityDDCT(ObjectSecurityTestsMixin, unittest.TestCase):
         check(paths, expected_paths)
 
 
-class TestObjectSecurityDDCTPactched(PatchedMixin, TestObjectSecurityDDCT):
+class TestObjectSecurityDDCTPatched(PatchedMixin, TestObjectSecurityDDCT):
     u"""Run the tests under Dexterity with the monkey patched method."""
