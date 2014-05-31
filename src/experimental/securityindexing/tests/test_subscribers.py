@@ -5,20 +5,15 @@ import plone.api as api
 import plone.app.testing as pa_testing
 import transaction
 
+from . import dx
 from .. import testing
 
 
-class SubscriberTests(testing.TestCaseMixin, unittest.TestCase):
-
-    layer = testing.INTEGRATION
-
-    def _call_mut(self, *args, **kw):
-        # Subscribers are automatically invoked
-        pass
+class SubscriberTestsMixin(testing.TestCaseMixin):
 
     def _id_for_path(self, path):
         u"""Modifies the id used for the folder id to simulate renaming."""
-        id = super(SubscriberTests, self)._id_for_path(path)
+        id = super(SubscriberTestsMixin, self)._id_for_path(path)
         suffix = random.randint(1000, 1000 + len(self.folders_by_path))
         return b'%s.%s' % (id, suffix)
 
@@ -28,7 +23,7 @@ class SubscriberTests(testing.TestCaseMixin, unittest.TestCase):
         u"""Create a folder then rename it to cause the
         relevant events to be fired as if this were done TTW.
         """
-        create_folder = super(SubscriberTests, self)._create_folder
+        create_folder = super(SubscriberTestsMixin, self)._create_folder
         create_folder(path, local_roles, userid=userid, block=block)
         # need to involve transaction so that we can rename
         # - use savepoint rather than commit
@@ -54,7 +49,7 @@ class SubscriberTests(testing.TestCaseMixin, unittest.TestCase):
         create_folder(b'/x/b/c/d', [b'Reviewer'], userid='bob')
 
     def setUp(self):
-        super(SubscriberTests, self).setUp()
+        super(SubscriberTestsMixin, self).setUp()
         portal = self.portal
         pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, ['Manager'])
         pa_testing.login(portal, pa_testing.TEST_USER_NAME)
@@ -87,3 +82,14 @@ class SubscriberTests(testing.TestCaseMixin, unittest.TestCase):
         self._check_shadowtree_integrity()
         api.content.delete(obj=self.folders_by_path[b'/x'])
         self._check_shadowtree_integrity()
+
+
+class TestSubscribers(SubscriberTestsMixin, unittest.TestCase):
+
+    layer = testing.INTEGRATION
+
+
+class TestSubscribersDDCT(dx.Mixin,
+                          SubscriberTestsMixin,
+                          unittest.TestCase):
+    layer = dx.INTEGRATION

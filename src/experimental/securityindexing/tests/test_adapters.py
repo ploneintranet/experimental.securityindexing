@@ -58,9 +58,6 @@ class ObjectSecurityTestsMixin(testing.TestCaseMixin):
 
     def setUp(self):
         super(ObjectSecurityTestsMixin, self).setUp()
-        portal = self.portal
-        pa_testing.setRoles(portal, pa_testing.TEST_USER_ID, [b'Manager'])
-        pa_testing.login(portal, pa_testing.TEST_USER_NAME)
         self._set_default_workflow_chain(b'intranet_workflow')
         # Create a user that never is owns
         # any objects created by this test.
@@ -245,19 +242,12 @@ class TestObjectSecurityPatched(PatchedMixin, TestObjectSecurity):
     """Run the tests under Archertypes with the monkey patched method."""
 
 
-class TestObjectSecurityDDCT(ObjectSecurityTestsMixin, unittest.TestCase):
+class TestObjectSecurityDDCT(dx.Mixin,
+                             ObjectSecurityTestsMixin,
+                             unittest.TestCase):
     u"""Object security tests with dexterity-default contenttypes in play."""
 
     layer = dx.INTEGRATION
-
-    def _check_paths_equal(self, paths, expected_paths):
-        # Ignore robot-test-folder created by the
-        # p.a.{event,contenttypes} fixture(s)
-        exclude_path = b'/robot-test-folder'
-        if exclude_path in paths:
-            paths.remove(exclude_path)
-        check = super(TestObjectSecurityDDCT, self)._check_paths_equal
-        check(paths, expected_paths)
 
 
 class TestObjectSecurityDDCTPatched(PatchedMixin, TestObjectSecurityDDCT):

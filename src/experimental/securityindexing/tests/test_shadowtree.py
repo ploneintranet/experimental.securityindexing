@@ -35,6 +35,7 @@ class TestShadowTreeNode(unittest.TestCase):
     plone_api_patcher_config = {
         b'portal.get.return_value': _fake_portal
     }
+
     plone_api_patcher = mock.patch(
         b'experimental.securityindexing.shadowtree.api',
         **plone_api_patcher_config

@@ -10,7 +10,7 @@
   <include package=".browser" />
   <include file="patches.zcml" />
 
-  <five:registerPackage package="." initialize=".initialize" />
+  <five:registerPackage package="." />
 
   <five:registerClass
     class=".utilities.ShadowTreeTool"
@@ -51,12 +51,6 @@
     for="Products.CMFCore.interfaces.IContentish
          zope.lifecycleevent.interfaces.IObjectRemovedEvent"
     handler=".subscribers.on_object_removed"
-    />
-
-  <!-- Site-local utility -->
-  <utility 
-    factory=".utilities.ShadowTreeTool"
-    provides=".interfaces.IShadowTreeTool"
     />
 
   <adapter

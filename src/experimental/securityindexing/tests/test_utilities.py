@@ -15,7 +15,7 @@ class TestShadowTreeTool(unittest.TestCase):
     }
 
     plone_api_patcher = mock.patch(
-        b'%s.utilities.api' % _package,
+        b'%s.utilities.api' % (_package,),
         **plone_api_patcher_config
     )
 

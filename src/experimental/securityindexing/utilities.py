@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from AccessControl import ClassSecurityInfo
 from OFS.SimpleItem import SimpleItem
+from Products.CMFCore.permissions import ManagePortal
 from plone import api
 from zope import component, interface
 from zope.annotation.interfaces import IAnnotations
@@ -10,11 +11,15 @@ from . import shadowtree
 from .interfaces import IObjectSecurity, IShadowTreeRoot, IShadowTreeTool
 
 
-class IntegrityInfo(namedtuple(b'IntegrityInfo', (
-        b'catalog_paths',
-        b'n_cataloged',
-        b'shadowtree_paths',
-        b'n_shadowed'))):
+_IntegityInfo = namedtuple(b'IntegrityInfo', (
+    b'catalog_paths',
+    b'n_cataloged',
+    b'shadowtree_paths',
+    b'n_shadowed'
+))
+
+
+class IntegrityInfo(_IntegityInfo):
 
     def is_integral(self):
         return self.n_cataloged == self.n_shadowed
@@ -29,7 +34,11 @@ class ShadowTreeTool(SimpleItem):
     _pkey = __package__
     _synchronised = False
     title = __doc__.strip().rstrip(b'.')
+
     security = ClassSecurityInfo()
+    security.declarePrivate(ManagePortal, b'delete_from_storage')
+    security.declarePrivate(ManagePortal, b'integrity_info')
+    security.declarePrivate(ManagePortal, b'sync')
 
     @staticmethod
     def _get_storage(portal=None):
@@ -83,13 +92,9 @@ class ShadowTreeTool(SimpleItem):
         root = self.root
         brains = catalog.unrestrictedSearchResults(path=b'/')
         for brain in brains:
-            brain_path = brain.getPath()
-            try:
-                root.traverse(brain_path)
-            except LookupError:
-                obj = brain.getObject()
-                node = root.ensure_ancestry_to(obj)
-                obj_sec = component.getMultiAdapter((obj, catalog),
-                                                    IObjectSecurity)
-                obj_sec.reindex_object(obj)
-                node.update_security_info(obj)
+            obj = brain.getObject()
+            node = root.ensure_ancestry_to(obj)
+            obj_sec = component.getMultiAdapter((obj, catalog),
+                                                IObjectSecurity)
+            obj_sec.reindex_object(obj)
+            node.update_security_info(obj)

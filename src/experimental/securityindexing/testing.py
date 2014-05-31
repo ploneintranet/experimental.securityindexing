@@ -1,9 +1,8 @@
 from importlib import import_module
 
+from Acquisition import aq_base
 import plone.api as api
 import plone.app.testing as pa_testing
-
-from .interfaces import IShadowTreeTool
 
 
 _marker = object()
@@ -11,10 +10,8 @@ _marker = object()
 
 class SecurityIndexingLayer(pa_testing.PloneWithPackageLayer):
 
-    def __init__(self, bases=(), name=None):
+    def __init__(self, bases=(pa_testing.PLONE_FIXTURE,), name=None):
         init = super(SecurityIndexingLayer, self).__init__
-        if bases is ():
-            bases = (pa_testing.PLONE_FIXTURE,)
         if name is None:
             name = type(self).__name__
         init(bases=bases,
@@ -23,18 +20,6 @@ class SecurityIndexingLayer(pa_testing.PloneWithPackageLayer):
              zcml_package=import_module(__package__),
              additional_z2_products=(__package__,),
              gs_profile_id=b'%s:default' % (__package__,))
-
-    def tearDownZope(self, app):
-        # This does not call Extensions.Install.uninstall for some reason?
-        # z2.uninstallProduct(app, __package__)
-        qi_tool = app.plone.portal_quickinstaller
-        qi_tool.uninstallProducts([__package__])
-        assert not qi_tool.isProductInstalled(__package__), (
-            b'Yikes!'
-            b'Probably an improt error in Extensions/Install.py '
-            b'since Zope2 loads this in an Extension method '
-            b'not importing the module in the normal Python context.'
-        )
 
     def tearDownPloneSite(self, portal):
         self.applyProfile(portal, b'%s:uninstall' % (__package__,))
@@ -45,6 +30,11 @@ FIXTURE = SecurityIndexingLayer()
 INTEGRATION = pa_testing.IntegrationTesting(
     bases=(FIXTURE,),
     name=b'SecurityIndexingLayer:Integration'
+)
+
+FUNCTIONAL = pa_testing.FunctionalTesting(
+    bases=(FIXTURE,),
+    name=b'SecurityIndexingLayer:Functional'
 )
 
 
@@ -76,13 +66,12 @@ class TestCaseMixin(object):
                              roles=local_roles)
         if block is not _marker:
             folder.__ac_local_roles_block__ = block
-        self._call_mut(folder)
+        folder.reindexObject()
         self.folders_by_path[path] = folder
 
     def _get_shadowtree_root(self):
-        portal = api.portal.get()
-        st = portal.getSiteManager().getUtility(IShadowTreeTool)
-        return st.root
+        tool = api.portal.get_tool(name=b'portal_shadowtree')
+        return aq_base(tool).root
 
     def _check_paths_equal(self, paths, expected_paths):
         self.assertSetEqual(paths, set(expected_paths))
@@ -132,4 +121,7 @@ class TestCaseMixin(object):
         return api.portal.get_tool(name=b'portal_catalog')
 
     def setUp(self):
+        super(TestCaseMixin, self).setUp()
         self.folders_by_path = {}
+        pa_testing.setRoles(self.portal, pa_testing.TEST_USER_ID, [b'Manager'])
+        pa_testing.login(self.portal, pa_testing.TEST_USER_NAME)
