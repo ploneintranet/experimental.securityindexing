@@ -1,8 +1,11 @@
 from importlib import import_module
 
 from Acquisition import aq_base
+from zope import component
 import plone.api as api
 import plone.app.testing as pa_testing
+
+from .interfaces import IShadowTreeTool
 
 
 _marker = object()
@@ -70,7 +73,7 @@ class TestCaseMixin(object):
         self.folders_by_path[path] = folder
 
     def _get_shadowtree_root(self):
-        tool = api.portal.get_tool(name=b'portal_shadowtree')
+        tool = component.getUtility(IShadowTreeTool)
         return aq_base(tool).root
 
     def _check_paths_equal(self, paths, expected_paths):

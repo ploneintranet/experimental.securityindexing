@@ -2,6 +2,7 @@ import unittest
 
 import plone.app.testing as pa_testing
 import plone.api as api
+from zope.annotation.interfaces import IAnnotations
 
 from .. import testing
 
@@ -36,5 +37,5 @@ class TestUninstall(testing.TestCaseMixin, unittest.TestCase):
         self.assertFalse(qi_tool.isProductInstalled(pkg))
         self.assertTrue(qi_tool.isProductInstallable(pkg))
         self.assertNotIn(pkg, qi_tool.getBrokenInstalls())
-        with self.assertRaises(api.exc.InvalidParameterError):
-            api.portal.get_tool(name=b'portal_shadowtree')
+        annotations = IAnnotations(api.portal.get())
+        self.assertNotIn(pkg, annotations)

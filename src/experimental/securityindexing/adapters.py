@@ -103,10 +103,9 @@ from itertools import chain, groupby
 from operator import attrgetter
 
 from Products.CMFCore.interfaces import IIndexableObject
-from plone import api
 from zope import component, interface
 
-from .interfaces import IObjectSecurity
+from .interfaces import IObjectSecurity, IShadowTreeTool
 
 
 class _IndexableContentishProxy(object):
@@ -138,7 +137,7 @@ class ObjectSecurity(object):
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
-        shadowtree = api.portal.get_tool(name=b'portal_shadowtree')
+        shadowtree = component.getUtility(IShadowTreeTool)
         self._st_root = shadowtree.root
 
     def reindex_object(self, obj):

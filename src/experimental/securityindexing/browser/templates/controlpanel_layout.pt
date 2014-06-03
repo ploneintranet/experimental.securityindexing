@@ -48,7 +48,7 @@ href string:${context/portal_url}/++resource++experimental.securityindexing/styl
 	    tal:attributes="action string:${context/absolute_url}/@@shadowtree-sync"
 	    tal:condition="view/available">
 	<label for="sync" i18n:translate="">
-	  Synchronise <em>portal_shadowtree</em> with <em>portal_catalog</em>:
+	  Synchronise <em>shadowtree</em> with <em>portal_catalog</em>:
 	</label>
 	<input id="sync" 
 	       type="submit"

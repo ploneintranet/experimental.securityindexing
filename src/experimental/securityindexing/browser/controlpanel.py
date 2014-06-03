@@ -1,7 +1,9 @@
 from Products.CMFPlone.PloneBatch import Batch
 from Products.Five import BrowserView
 from plone import api
+from zope import component
 
+from ..interfaces import IShadowTreeTool
 from .. import _
 
 
@@ -49,12 +51,12 @@ class ControlPanel(BrowserView):
         return dict(rows=self.rows, info=self.info)
 
     def update(self):
-        st = api.portal.get_tool(name=b'portal_shadowtree')
+        st = component.getUtility(IShadowTreeTool)
         self.info = st.integrity_info()
 
     def handle_sync(self):
         catalog = api.portal.get_tool(name=b'portal_catalog')
-        shadowtree = api.portal.get_tool(name=b'portal_shadowtree')
+        shadowtree = component.getUtility(IShadowTreeTool)
         shadowtree.sync(catalog)
         api.portal.show_message(message=u'Synchronisation complete',
                                 type=b'info',

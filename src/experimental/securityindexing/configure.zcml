@@ -60,4 +60,7 @@
 	 Products.CMFCore.interfaces.ICatalogTool"
     />
 
+  <utility factory=".utilities.ShadowTreeTool"
+	   provides=".interfaces.IShadowTreeTool" />
+
 </configure>
