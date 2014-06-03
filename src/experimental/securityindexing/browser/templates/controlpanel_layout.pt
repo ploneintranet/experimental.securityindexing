@@ -1,0 +1,102 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      lang="en"
+      metal:use-macro="here/prefs_main_template/macros/master"
+      i18n:domain="experimental.securityindexing">
+
+  <metal:block fill-slot="top_slot">
+    <tal:defines 
+      tal:define="
+dummy python:request.set('disable_border',1);
+disable_column_one python:request.set('disable_plone.leftcolumn',0);	
+disable_column_two python:request.set('disable_plone.rightcolumn',1);"
+       />
+
+    <link 
+      rel="stylesheet"
+      href="++resource++experimenal.securityindexing/style.css"
+      type="text/css"
+      tal:attributes="
+href string:${context/portal_url}/++resource++experimental.securityindexing/style.css" 
+      />
+  </metal:block>
+
+  <body>
+
+    <div metal:fill-slot="prefs_configlet_main">
+      <a href=""
+	 id="setup-link"
+	 tal:attributes="href string:$portal_url/plone_control_panel"
+	 i18n:translate="">
+        Site Setup
+      </a>	
+
+      <h1 class="documentFirstHeading" tal:content="view/label">View Title</h1>
+
+      <div metal:use-macro="context/global_statusmessage/macros/portal_message">
+	Portal status message
+      </div>
+
+      <hr />
+
+      <p />
+      <form name="shadowtree-sync-form"
+	    id="shadowtree-sync-form"
+	    method="POST"
+	    tal:attributes="action string:${context/absolute_url}/@@shadowtree-sync"
+	    tal:condition="view/available">
+	<label for="sync" i18n:translate="">
+	  Synchronise <em>shadowtree</em> with <em>portal_catalog</em>:
+	</label>
+	<input id="sync" 
+	       type="submit"
+	       name="sync"
+	       tal:attributes="value python: u'\uF0EC'" />
+      </form>
+      <p />
+      
+      <div tal:define="summary view/getContent">
+
+	<metal:block 
+	   tal:define="summary_rows summary/rows">
+
+	  <tal:shadowtree-sync-required condition="summary_rows">
+	    <table id="shadowtree-summary"
+		   class="listing"
+		   tal:define="headings python: tuple(summary_rows[0])">
+	      <caption i18n:translate="">
+		Differences between allowedRolesAndUsers index and portal_shadowtree
+	      </caption>
+	      <thead>
+		<tr>
+		  <th tal:repeat="heading headings"
+		      tal:content="heading" />
+		</tr>
+	      </thead>
+	      <tbody>
+		<tal:loop repeat="summary_row summary_rows">
+		  <tr tal:define="oddrow repeat/summary_row/odd"
+		      tal:attributes="class python:oddrow and 'odd' or 'even'">
+		    <td tal:repeat="heading headings"
+			tal:content="python: summary_row[heading]" />
+		  </tr>
+		</tal:loop>
+	      </tbody>
+	    </table>
+	  </tal:shadowtree-sync-required>
+
+	  <div class="portalMessage info"
+	       i18n:translate=""
+	       tal:condition="not:view/available">
+	    Shadow tree is synchronised.
+	  </div>
+
+	</metal:block>
+
+      </div>
+   
+    </div>
+  </body>
+</html>

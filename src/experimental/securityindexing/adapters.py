@@ -99,10 +99,10 @@ Considerations
      by default.
 
 """
-import collections
+from itertools import chain, groupby
+from operator import attrgetter
 
 from Products.CMFCore.interfaces import IIndexableObject
-from plone import api
 from zope import component, interface
 
 from .interfaces import IObjectSecurity, IShadowTreeTool
@@ -137,13 +137,15 @@ class ObjectSecurity(object):
     def __init__(self, context, catalog_tool):
         self.context = context
         self.catalog_tool = catalog_tool
-        portal = api.portal.get()
-        sm = portal.getSiteManager()
-        self._shadowtree = sm.getUtility(IShadowTreeTool)
+        shadowtree = component.getUtility(IShadowTreeTool)
+        self._st_root = shadowtree.root
 
-    def _reindex_object(self, obj):
+    def reindex_object(self, obj):
         reindex = self.catalog_tool.reindexObject
-        reindex(obj, idxs=self._index_ids, update_metadata=0)
+        # need to contruct UID otherwise reindexObject will ask catalog
+        # tool for __url which we don't have, and raise TypeError
+        uid = b'/'.join(obj.getPhysicalPath())
+        reindex(obj, idxs=self._index_ids, update_metadata=0, uid=uid)
 
     def _to_indexable(self, obj):
         return component.getMultiAdapter((obj, self.catalog_tool),
@@ -159,25 +161,22 @@ class ObjectSecurity(object):
         this method can make descisions regarding which descendants need
         to be re-indexed.
         """
-        reindex_object = self._reindex_object
+        obj = self.context
+        reindex_object = self.reindex_object
         to_indexable = self._to_indexable
-        traverse = self.context.unrestrictedTraverse
-        root = self._shadowtree.root
-        node = root.ensure_ancestry_to(self.context)
-        token_before = node.token
-        reindex_object(self.context)
-        node.update_security_info(self.context)
-        token_after = node.token
-        if token_before != token_after:
-            shared_tokens = collections.defaultdict(list)
-            shared_tokens[node.token].append(node)
-            for descendant in node.descendants(ignore_block=False):
-                shared_tokens[descendant.token].append(descendant)
-            for (old_token, nodes_group) in shared_tokens.items():
-                first_node = next(iter(nodes_group))
+        root = self._st_root
+        traverse = obj.unrestrictedTraverse
+        node = root.ensure_ancestry_to(obj)
+        old_token = node.token
+        reindex_object(obj)
+        node.update_security_info(obj)
+        new_token = node.token
+        if old_token != new_token:
+            nodes = chain(iter([node]), node.descendants(ignore_block=False))
+            for (token, node_group) in groupby(nodes, attrgetter('token')):
+                first_node = next(node_group)
                 first_obj = traverse(first_node.physical_path)
-                indexable = to_indexable(first_obj)
-                aru = indexable.allowedRolesAndUsers
-                for node in nodes_group:
+                aru = to_indexable(first_obj).allowedRolesAndUsers
+                for node in chain(iter([first_node]), node_group):
                     content_proxy = _IndexableContentishProxy(aru, node)
                     reindex_object(content_proxy)

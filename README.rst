@@ -1,25 +1,66 @@
 .. image:: https://api.travis-ci.org/ploneintranet/experimental.securityindexing.png
   :target: https://travis-ci.org/ploneintranet/experimental.securityindexing
 
-.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png?branch=master
-  :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing?branch=master
-
+.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png?branch=streamline-installation
+  :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing?branch=streamline-installation
 
 =============================
 experimental.securityindexing
 =============================
 
-Foreword
-========
+Description
+===========
 This package aims to address a long-standing performance issue in Plone: 
 
-  When adding roles to users or groups via the @@sharing action
-  on the current `context` (content item).
-  The context item has the following API, which when invoked which causes some sites,
-  depending on structure and complexity.
+    Under circumstances which require security for an object to be re-indexed, 
+    for example, when adding roles to users or groups via the @@sharing view,
+    the object for which the sharing form is being used and all of its decendant objects
+    in the content tree are unconditionally fetched from the database (ZODB) and
+    their security attributes (allowedRolesAndUsers) are re-indexed.
 
-Existing behaviour
-==================
+    This can yield terrible performance for some sites, depending upon the size (number of objects),
+    and workflow complexity.
+
+
+Installation
+============
+To install this package, add ``experimental.securityindexing`` to your Plone sites'
+eggs and re-run buildout:
+
+.. code-block: ini
+
+  [buildout]
+  ...
+  eggs += experimental.securityindexing
+
+
+Testing it out
+--------------
+This package provides some rudementry benchmarks which are aimed to be a sanity test
+answering the question:
+
+    "Are we at least faster than the previous implementation by default?"
+
+These benchmarks should not be treated as authorative, nor indicative of the performance
+you should expect on a real site.
+
+To do so, the best way to ascertain results is to install the package in a development/staging 
+versions of your site aginst some realistic data.
+
+
+Installation is as above, but add the extras ``[benchmarks,tests]``:
+
+.. code-block: ini
+
+  [buildout]
+  ...
+  eggs += experimental.securityindexing [benchmarks,test]
+
+Please read the `benchmark docs`_ for details.
+
+
+Existing behaviour in Plone 4.x sites
+=====================================
 When local roles are assigned to user on a given folderish content item, 
 the folder will be indexed and all of it's descendants (child folders) -
 unconditionally.
@@ -34,12 +75,14 @@ Depending upon the combination of:
 This behaviour is currently implemented twice (Dexterity and Archetypes),
 by the method `reindexObjectSecurity`. This method invoked on the context 
 that local roles are being manipulated upon, in order to reflect the changes in the 
-`allowedUsersAndRoles` `Keywordindex` in the `ZCatalog`.
+`allowedRolesAndUsers` `Keywordindex` in the `ZCatalog`.
 
-This index used by Plone to determine which content a user can see when ZCatalog.searchResults is 
-involved (e.g Site Search).
+The `allowedRolesAndUsers` index is used in Plone to determine which content a user can see.
+e.g: 
 
-Within a Plone 4.x or 5.x, the two implementations of the `reindexObjectSecurity` API are: 
+    In the site search
+  
+Within a Plone 4.x site, the two implementations of the `reindexObjectSecurity` API are: 
 
   - Products.CMFCore.CMFCatalogAware.CatalogAware.reindexObjectSecuity(skip_self=False):
     Indexes the content item (self). The keyword parameter skip_self 
@@ -74,7 +117,7 @@ The expensive operations seem to be:
       4. Repeats 2. until a parent is None (root of the tree).
       
 
-The goals of any solution to address the afore described performance issue(s) are:
+The goals of any solution to address the previously described performance issue(s) are:
  
   1. Wake up as few objects as possible.
 
@@ -102,11 +145,11 @@ The following scheme was envisioned to optimise the above algorithm:
 
 Credit
 ======
-This work has been done as part of the `Plone Intranet project <http://github.com/ploneintranet>`_. 
-Work sponsored by `Netsight <http://www.netsight.co.uk>`_.
+This work has been done as part of the `Plone Intranet project`_. 
+Work sponsored by `Netsight Internet Solutions`_.
 
 
-    
-:author: Matt Russell <mattr@netsight.co.uk>
-:date-created: 2014-05-04
-:date-modified: 2014-05-16
+.. _`Netsight Internet Solutions`: http://www.netsight.co.uk
+.. _`Plone Intranet project`: http://github.com/ploneintranet
+.. _`benchmark docs`: docs/benchmarks.rst
+

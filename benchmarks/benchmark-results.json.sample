@@ -1,0 +1,143 @@
+{
+    "[N_SIBLINGS=2,N_LEVELS=2]": {
+        "n_objects": 7,
+        "operation": "Reindex Object Security",
+        "results": {
+            "Archetypes Installed": {
+                "action-duration": {
+                    "lrchange": 0.004472017288208008,
+                    "lrchange_with_lrblock": 0.0019388198852539062,
+                    "nochange": 0.0021619796752929688,
+                    "wfchange": 0.0010318756103515625
+                }
+            },
+            "Archetypes Original": {
+                "action-duration": {
+                    "lrchange": 0.009984970092773438,
+                    "lrchange_with_lrblock": 0.005108833312988281,
+                    "nochange": 0.006139993667602539,
+                    "wfchange": 0.005167961120605469
+                }
+            },
+            "Dexterity Installed": {
+                "action-duration": {
+                    "lrchange": 0.005777835845947266,
+                    "lrchange_with_lrblock": 0.00418400764465332,
+                    "nochange": 0.005125999450683594,
+                    "wfchange": 0.0015330314636230469
+                }
+            },
+            "Dexterity Original": {
+                "action-duration": {
+                    "lrchange": 0.025439977645874023,
+                    "lrchange_with_lrblock": 0.013792991638183594,
+                    "nochange": 0.019254207611083984,
+                    "wfchange": 0.014011859893798828
+                }
+            }
+        },
+        "settings": {
+            "action-labels": {
+                "lrchange": "Local role change",
+                "lrchange_with_lrblock": "Local role change with block",
+                "nochange": "No change",
+                "wfchange": "Workflow state change"
+            }
+        },
+        "timestamp": "2014-05-19T01:50:57.544963"
+    },
+    "[N_SIBLINGS=3,N_LEVELS=3]": {
+        "n_objects": 40,
+        "operation": "Reindex Object Security",
+        "results": {
+            "Archetypes Installed": {
+                "action-duration": {
+                    "lrchange": 0.004544973373413086,
+                    "lrchange_with_lrblock": 0.001995086669921875,
+                    "nochange": 0.002193927764892578,
+                    "wfchange": 0.0010340213775634766
+                }
+            },
+            "Archetypes Original": {
+                "action-duration": {
+                    "lrchange": 0.05697989463806152,
+                    "lrchange_with_lrblock": 0.03187394142150879,
+                    "nochange": 0.034436941146850586,
+                    "wfchange": 0.033442020416259766
+                }
+            },
+            "Dexterity Installed": {
+                "action-duration": {
+                    "lrchange": 0.005884885787963867,
+                    "lrchange_with_lrblock": 0.004147052764892578,
+                    "nochange": 0.005391836166381836,
+                    "wfchange": 0.0015418529510498047
+                }
+            },
+            "Dexterity Original": {
+                "action-duration": {
+                    "lrchange": 0.18726205825805664,
+                    "lrchange_with_lrblock": 0.12567496299743652,
+                    "nochange": 0.1338670253753662,
+                    "wfchange": 0.1283409595489502
+                }
+            }
+        },
+        "settings": {
+            "action-labels": {
+                "lrchange": "Local role change",
+                "lrchange_with_lrblock": "Local role change with block",
+                "nochange": "No change",
+                "wfchange": "Workflow state change"
+            }
+        },
+        "timestamp": "2014-05-19T01:52:55.301852"
+    },
+    "[N_SIBLINGS=5,N_LEVELS=4]": {
+        "n_objects": 781,
+        "operation": "Reindex Object Security",
+        "results": {
+            "Archetypes Installed": {
+                "action-duration": {
+                    "lrchange": 0.004848003387451172,
+                    "lrchange_with_lrblock": 0.0019829273223876953,
+                    "nochange": 0.0022139549255371094,
+                    "wfchange": 0.0010340213775634766
+                }
+            },
+            "Archetypes Original": {
+                "action-duration": {
+                    "lrchange": 1.339224100112915,
+                    "lrchange_with_lrblock": 1.1556329727172852,
+                    "nochange": 1.3762319087982178,
+                    "wfchange": 0.841973066329956
+                }
+            },
+            "Dexterity Installed": {
+                "action-duration": {
+                    "lrchange": 0.006880044937133789,
+                    "lrchange_with_lrblock": 0.005574941635131836,
+                    "nochange": 0.006088972091674805,
+                    "wfchange": 0.0018069744110107422
+                }
+            },
+            "Dexterity Original": {
+                "action-duration": {
+                    "lrchange": 4.633097171783447,
+                    "lrchange_with_lrblock": 4.361129999160767,
+                    "nochange": 4.7136390209198,
+                    "wfchange": 4.049884080886841
+                }
+            }
+        },
+        "settings": {
+            "action-labels": {
+                "lrchange": "Local role change",
+                "lrchange_with_lrblock": "Local role change with block",
+                "nochange": "No change",
+                "wfchange": "Workflow state change"
+            }
+        },
+        "timestamp": "2014-05-19T03:18:07.133645"
+    }
+}

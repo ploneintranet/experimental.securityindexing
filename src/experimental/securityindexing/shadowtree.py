@@ -1,4 +1,4 @@
-"""Manage a shadow tree of nodes maintaining security information.
+u"""Manage a shadow tree of nodes maintaining security information.
 
 A shadow tree mirrors the Portal content tree in a Zope/Plone site,
 each node storing security identifiers in order to enablable
@@ -17,10 +17,10 @@ _marker = object()
 
 @interface.implementer(IShadowTreeNode)
 class Node(Persistent):
-    """A Node corresponding to an item in the content tree."""
+    u"""A Node corresponding to an item in the content tree."""
 
     __parent__ = None
-    "The parent node"
+    u"The parent node"
 
     id = None
     block_inherit_roles = False
@@ -86,12 +86,12 @@ class Node(Persistent):
 
     @classmethod
     def create_security_token(cls, obj):
-        """Create a security token for `obj`.
+        u"""Create a security token for ``obj``.
 
         We use the return value of `acl_users._getAllLocalRoles`
         as for hashing, since its desired to use all parent local roles.
 
-        `allowedRolesUsers` is not used, as  sometimes the sequence does
+        ``allowedRolesUsers`` is not used, as  sometimes the sequence does
         not contain the full set of local roles, since shortcuts are utilised
         for certain cases, e.g:
 
@@ -100,10 +100,10 @@ class Node(Persistent):
 
         :param obj: The content item.
         :type obj: IContentish
-        :returns: The hash of the local role information contained by `obj`.
+        :returns: The hash of the local role information contained by ``obj``.
         :rtype: int
         """
-        acl_users = api.portal.get_tool(b'acl_users')
+        acl_users = api.portal.get_tool(name=b'acl_users')
         ac_local_roles = acl_users._getAllLocalRoles(obj)
         local_roles = tuple((k, frozenset(v))
                             for (k, v) in ac_local_roles.items())
@@ -114,15 +114,15 @@ class Node(Persistent):
         return getattr(obj, b'__ac_local_roles_block__', False)
 
     def ensure_ancestry_to(self, obj):
-        """Retrieve the shadow node for corresponding content object.
+        u"""Retrieve the shadow node for corresponding content object.
 
         Ensures that a corresponding shadow node exists for each ancestor
-        of `obj.getPhysicalPath()`.
+        of ``obj.getPhysicalPath()``.
 
         :param obj: The content object.
         :type obj: Products.CMFCore.PortalContent
         :returns: The node correspoinding to the tail
-                  component of `obj.getPhysicalPath()`
+                  component of ``obj.getPhysicalPath()``.
         :rtype: experimental.localrolesindex.shadowtree.Node
         """
         node = self
@@ -134,10 +134,11 @@ class Node(Persistent):
                 parent[node.id] = node
             else:
                 node = node[comp]
+        node.physical_path = obj.getPhysicalPath()
         return node
 
     def update_security_info(self, obj):
-        """Update the security information for an object.
+        u"""Update the security information for an object.
 
         :param obj: The portal content object.
         :type obj: Products.CMFCore.PortalContent
@@ -145,10 +146,9 @@ class Node(Persistent):
         self.physical_path = obj.getPhysicalPath()
         self.block_inherit_roles = self.get_local_roles_block(obj)
         self.token = self.create_security_token(obj)
-        assert self.id == obj.getId()
 
     def descendants(self, ignore_block=False):
-        """Generates descendant nodes.
+        u"""Generates descendant nodes.
 
         Optionally yields nodes that have local roles blocked.
 
@@ -174,7 +174,7 @@ class Node(Persistent):
         if isinstance(traversable, (list, tuple)):
             physical_path = traversable
         elif isinstance(traversable, basestring):
-            physical_path = tuple(traversable.split('/'))
+            physical_path = tuple(traversable.split(b'/'))
         else:
             raise TypeError(b'Object %r is not traversable' % traversable)
         if physical_path[0] != self.id:

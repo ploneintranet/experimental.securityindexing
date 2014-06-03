@@ -1,16 +1,39 @@
+import random
 import unittest
 
 import plone.api as api
 import plone.app.testing as pa_testing
+import transaction
 
+from . import dx
 from .. import testing
 
 
 class SubscriberTestsMixin(testing.TestCaseMixin):
 
-    def _call_mut(self, *args, **kw):
-        # Subscribers are automatically invoked
-        pass
+    def _id_for_path(self, path):
+        u"""Modifies the id used for the folder id to simulate renaming."""
+        id = super(SubscriberTestsMixin, self)._id_for_path(path)
+        suffix = random.randint(1000, 1000 + len(self.folders_by_path))
+        return b'%s.%s' % (id, suffix)
+
+    def _create_folder(self, path, local_roles,
+                       userid=pa_testing.TEST_USER_ID,
+                       block=False):
+        u"""Create a folder then rename it to cause the
+        relevant events to be fired as if this were done TTW.
+        """
+        create_folder = super(SubscriberTestsMixin, self)._create_folder
+        create_folder(path, local_roles, userid=userid, block=block)
+        # need to involve transaction so that we can rename
+        # - use savepoint rather than commit
+        #   since we are in an integration layer
+        #   are transaction scope is per-test
+        transaction.savepoint()
+        folder = self.folders_by_path[path]
+        new_id = folder.getId().split(b'.')[0]
+        with api.env.adopt_user(username=pa_testing.TEST_USER_NAME):
+            api.content.rename(obj=folder, new_id=new_id)
 
     def _populate(self):
         self.folders_by_path.clear()
@@ -45,27 +68,28 @@ class SubscriberTestsMixin(testing.TestCaseMixin):
                             self.query_user.getUserId(),
                             ['Manager'])
 
-    def test_on_object_added(self):
+    def test_on_object_moved(self):
         self._populate()
         self._check_shadowtree_integrity()
 
     def test_on_object_removed(self):
         self._populate()
         self._check_shadowtree_integrity()
-        api.content.delete(self.folders_by_path[b'/x/y/z/a'])
+        api.content.delete(obj=self.folders_by_path[b'/x/y/z/a'])
 
     def test_on_object_removed_is_at_content_root(self):
         self._populate()
         self._check_shadowtree_integrity()
-        api.content.delete(self.folders_by_path[b'/x'])
+        api.content.delete(obj=self.folders_by_path[b'/x'])
         self._check_shadowtree_integrity()
 
 
-class TestSubscribersAT(SubscriberTestsMixin, unittest.TestCase):
+class TestSubscribers(SubscriberTestsMixin, unittest.TestCase):
 
-    layer = testing.AT_INTEGRATION
+    layer = testing.INTEGRATION
 
 
-class TestSubscribersDX(SubscriberTestsMixin, unittest.TestCase):
-
-    layer = testing.DX_INTEGRATION
+class TestSubscribersDDCT(dx.Mixin,
+                          SubscriberTestsMixin,
+                          unittest.TestCase):
+    layer = dx.INTEGRATION

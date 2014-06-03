@@ -1,0 +1,45 @@
+#content table#shadowtree-summary {
+    width: 75%;
+}
+
+#content table#shadowtree-summary th {
+    text-transfom: captilaize;
+}
+
+#content table#shadowtree-summary thead tr {
+    background-color: #000000;
+    color: #ffffee;
+    
+}
+
+#content table#shadowtree-summary tr.odd {
+    background-color: #ff0000;
+    color: #fffef0;
+}
+
+#content table#shadowtree-summary tbody tr.odd {
+    background-color: #fffef0;
+}
+
+#content table#shadowtree-summary tbody tr.even td {
+    background-color: #fffeff;
+}
+
+
+#content table#shadowtree-summary tbody tr.odd td,
+#content table#shadowtree-summary tbody tr.even td {
+    color: #00000f;
+}
+
+#content table#shadowtree-summary td {
+    font-size: 10pt;
+    color: #000;
+    cell-spacing: 3px;
+    padding: 2px;
+    padding-left: 12px;
+}
+
+input#sync {
+    width: 42px;
+    height: 42px;
+}

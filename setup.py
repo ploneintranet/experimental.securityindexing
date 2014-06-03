@@ -33,24 +33,23 @@ setup(name='experimental.securityindexing',
       package_dir={'': 'src'},
       install_requires=[
           'setuptools',
-          'plone.api'
+          'plone.api',
+          'zope.annotation',
+          'zope.component',
+          'zope.interface',
+          'Products.Archetypes',
+          'Products.CMFCore'
       ],
       extras_require={
+          'benchmark': [
+              'plone.app.contenttypes[test]',
+              'plone.app.testing'
+          ],
           'test': [
               'mock',
-              'plone.app.testing',
               'plone.app.contenttypes[test]',
-              'plone.app.event[test]'
-          ],
-          'dexterity': [
-              'plone.app.contenttypes',
               'plone.app.dexterity[grok]',
-              'plone.app.event'
-          ],
-          'benchmarks': [
-              # 'click',
-              # 'matplotlib',
-              # 'numpy'
+              'plone.app.testing',
           ]
       },
       entry_points="""

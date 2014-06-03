@@ -1,7 +1,3 @@
+from zope.i18nmessageid import MessageFactory
 
-
-def initialize(context):
-    """Old Zope2-style product intitializer.
-
-    This is here to support Extensions.Install.uninstall.
-    """
+_ = MessageFactory(__package__)
