@@ -1,0 +1,4 @@
+global-exclude parts
+global-exclude omelette
+recursive-include *
+
