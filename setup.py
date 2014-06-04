@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='experimental.securityindexing',
-      version='0.3',
+      version='0.4',
       url='https://github.com/ploneintranet/experimental.securityindexing',
       license='GPLv2',
       description="""\
