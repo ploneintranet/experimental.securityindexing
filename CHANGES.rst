@@ -2,6 +2,12 @@
 Changelog
 =========
 
+0.5 (unreleased)
+================
+
+- Nothing changed yet.
+
+
 0.4 (2014-06-04)
 ================
  - Fix versioning metadata, bumped version for new release.
