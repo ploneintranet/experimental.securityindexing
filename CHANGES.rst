@@ -2,6 +2,10 @@
 Changelog
 =========
 
+0.3 (2014-06-04)
+================
+ - Fix versioning metadata, bumped version for new release.
+
 0.2 (2014-06-04)
 ================
  - Corrected package metadata.
