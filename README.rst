@@ -1,8 +1,8 @@
 .. image:: https://api.travis-ci.org/ploneintranet/experimental.securityindexing.png
   :target: https://travis-ci.org/ploneintranet/experimental.securityindexing
 
-.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png?branch=streamline-installation
-  :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing?branch=streamline-installation
+.. image:: https://coveralls.io/repos/ploneintranet/experimental.securityindexing/badge.png
+  :target: https://coveralls.io/r/ploneintranet/experimental.securityindexing
 
 =============================
 experimental.securityindexing

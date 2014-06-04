@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='experimental.securityindexing',
-      version='0.2dev',
+      version='0.3',
       url='https://github.com/ploneintranet/experimental.securityindexing',
       license='GPLv2',
       description="""\
@@ -22,11 +22,11 @@ setup(name='experimental.securityindexing',
           open('CHANGES.rst').read()
       ),
       classifiers=[
-          "Programming Language :: Python :: 2.7",
-          "Framework :: Plone :: 4.0",
-          "Framework :: Plone :: 4.1",
-          "Framework :: Plone :: 4.2",
-          "Framework :: Plone :: 4.3",
+          'Programming Language :: Python :: 2.7',
+          'Framework :: Plone :: 4.0',
+          'Framework :: Plone :: 4.1',
+          'Framework :: Plone :: 4.2',
+          'Framework :: Plone :: 4.3',
       ],
       packages=find_packages('src'),
       namespace_packages=['experimental'],
