@@ -1,4 +1,8 @@
 global-exclude parts
 global-exclude omelette
-recursive-include *
+include bootstrap.py
+include LICENSE
+include *.rst
+include *.cfg
+recursive-include src *
 
