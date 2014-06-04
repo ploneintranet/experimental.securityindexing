@@ -57,5 +57,4 @@ setup(name='experimental.securityindexing',
       target = plone
       """,
       include_package_data=True,
-      package_data={'experimental.securityindexing': 'benchmarks'},
       zip_safe=False)
