@@ -2,5 +2,6 @@ global-exclude parts
 global-exclude omelette
 include LICENSE
 include README.rst
+include CHANGES.rst
 recursive-include src *
 
